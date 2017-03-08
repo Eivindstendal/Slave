@@ -68,3 +68,8 @@
 .\_build\main.o: ..\..\..\..\..\..\components\libraries\util\sdk_os.h
 .\_build\main.o: ..\..\..\..\..\..\components\libraries\util\sdk_macros.h
 .\_build\main.o: ..\..\..\..\..\..\components\drivers_nrf\hal\nrf_temp.h
+.\_build\main.o: ..\..\..\..\..\..\components\ble\peer_manager\peer_manager.h
+.\_build\main.o: ..\..\..\..\..\..\components\ble\peer_manager\peer_manager_types.h
+.\_build\main.o: ..\..\..\..\..\..\components\ble\common\ble_gatt_db.h
+.\_build\main.o: ..\..\..\..\..\..\components\ble\peer_manager\peer_database.h
+.\_build\main.o: ..\..\..\..\..\..\components\ble\peer_manager\peer_manager_internal.h
