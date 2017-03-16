@@ -41,6 +41,10 @@
 #include "nrf_temp.h"
 #include "peer_manager.h"
 
+#define NRF_LOG_MODULE_NAME "APP"
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+
 #include <stdint.h>
 #include <string.h>
 
@@ -61,6 +65,9 @@
 
 #define DEVICE_NAME                     "Nordic_UART"                               /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
+#define Slave_type											0x62																				/**< The type slave, capital letter means it has a temp sensor, 0x62 means type B*/ 
+#define max_priority										0x0A																				/**< The highest priority for the slave*/
+#define init_priority										0x14																				/**< The start up priority*/
 
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
@@ -75,7 +82,7 @@
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
-#define TEMP_UPDATE_INTERVAL						10000																				/**< Number of milliseconds the temperature should be calculated*/
+#define TEMP_UPDATE_INTERVAL						20000																				/**< Number of milliseconds the temperature should be calculated*/
 
 #define DEAD_BEEF                       0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
@@ -83,16 +90,19 @@
 #define UART_RX_BUF_SIZE                256                                         /**< UART RX buffer size. */
 							
 #define ELEMENTS_IN_MY_DATA_STRUCT		  7
+#define BLE_GAP_WHITELIST_ADDR_MAX_COUNT_EDITED 1
+
 
 APP_TIMER_DEF(m_temp_timer);
 
+//static pm_peer_id_t m_peer_id;                             												  /**< Device reference handle to the current bonded central. */
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
 bool send_data(void);
 void my_program(void);
-
+static bool Data_sent = false;
 
 typedef struct 
 {
@@ -125,158 +135,26 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 }
 
 
-/**@brief Function for handling Peer Manager events.
- *
- * @param[in] p_evt  Peer Manager event.
+/**@brief Names which the central applications will scan for, and which will be advertised by the peripherals.
+ *  if these are set to empty strings, the UUIDs defined below will be used
  */
-static void pm_evt_handler(pm_evt_t const * p_evt)
+//static const char m_target_periph_name[] = "";          /**< If you want to connect to a central using a given advertising name, type its name here. */
+static bool  is_connect_per_addr = true;               /**< If you want to connect to a cental with a given address, set this to true and put the correct address in the variable below. */
+static const ble_gap_addr_t m_target_central_addr =
 {
-    ret_code_t err_code;
-
-    switch(p_evt->evt_id)
-    {
-        case PM_EVT_BONDED_PEER_CONNECTED:
-        {
-      //      NRF_LOG_PRINTF_DEBUG("Connected to previously bonded device\r\n");
-      //      err_code = pm_peer_rank_highest(p_evt->peer_id);
-      //      if (err_code != NRF_ERROR_BUSY)
-      //      {
-      //              APP_ERROR_CHECK(err_code);
-      //      }
-        }break;//PM_EVT_BONDED_PEER_CONNECTED
-
-        case PM_EVT_CONN_SEC_START:
-            break;//PM_EVT_CONN_SEC_START
-
-        case PM_EVT_CONN_SEC_SUCCEEDED:
-        {
-            //NRF_LOG_PRINTF_DEBUG("Link secured. Role: %d. conn_handle: %d, Procedure: %d\r\n",
-              //             ble_conn_state_role(p_evt->conn_handle),
-                //           p_evt->conn_handle,
-                  //         p_evt->params.conn_sec_succeeded.procedure);
-            //err_code = pm_peer_rank_highest(p_evt->peer_id);
-            //if (err_code != NRF_ERROR_BUSY)
-            //{
-            //        APP_ERROR_CHECK(err_code);
-            //}
-        }break;//PM_EVT_CONN_SEC_SUCCEEDED
-
-        case PM_EVT_CONN_SEC_FAILED:
-        {
-            /** In some cases, when securing fails, it can be restarted directly. Sometimes it can
-             *  be restarted, but only after changing some Security Parameters. Sometimes, it cannot
-             *  be restarted until the link is disconnected and reconnected. Sometimes it is
-             *  impossible, to secure the link, or the peer device does not support it. How to
-             *  handle this error is highly application dependent. */
-            switch (p_evt->params.conn_sec_failed.error)
-            {
-                case PM_CONN_SEC_ERROR_PIN_OR_KEY_MISSING:
-                    // Rebond if one party has lost its keys.
-                    err_code = pm_conn_secure(p_evt->conn_handle, true);
-                    if (err_code != NRF_ERROR_INVALID_STATE)
-                    {
-                        APP_ERROR_CHECK(err_code);
-                    }
-                    break;//PM_CONN_SEC_ERROR_PIN_OR_KEY_MISSING
-
-                default:
-                    break;
-            }
-        }break;//PM_EVT_CONN_SEC_FAILED
-
-        case PM_EVT_CONN_SEC_CONFIG_REQ:
-        {
-            // Reject pairing request from an already bonded peer.
-            //pm_conn_sec_config_t conn_sec_config = {.allow_repairing = false};
-            //pm_conn_sec_config_reply(p_evt->conn_handle, &conn_sec_config);
-        }break;//PM_EVT_CONN_SEC_CONFIG_REQ
-
-        case PM_EVT_STORAGE_FULL:
-        {
-            // Run garbage collection on the flash.
-        //    err_code = fds_gc();
-         //   if (err_code == FDS_ERR_BUSY || err_code == FDS_ERR_NO_SPACE_IN_QUEUES)
-          //  {
-           //     // Retry.
-           // }
-            //else
-            //{
-             //   APP_ERROR_CHECK(err_code);
-            //}
-        }break;//PM_EVT_STORAGE_FULL
-
-        case PM_EVT_ERROR_UNEXPECTED:
-            // Assert.
-            APP_ERROR_CHECK(p_evt->params.error_unexpected.error);
-            break;//PM_EVT_ERROR_UNEXPECTED
-
-        case PM_EVT_PEER_DATA_UPDATE_SUCCEEDED:
-            break;//PM_EVT_PEER_DATA_UPDATE_SUCCEEDED
-
-        case PM_EVT_PEER_DATA_UPDATE_FAILED:
-            // Assert.
-            APP_ERROR_CHECK_BOOL(false);
-            break;//PM_EVT_PEER_DATA_UPDATE_FAILED
-
-        case PM_EVT_PEER_DELETE_SUCCEEDED:
-            break;//PM_EVT_PEER_DELETE_SUCCEEDED
-
-        case PM_EVT_PEER_DELETE_FAILED:
-            // Assert.
-            APP_ERROR_CHECK(p_evt->params.peer_delete_failed.error);
-            break;//PM_EVT_PEER_DELETE_FAILED
-
-        case PM_EVT_PEERS_DELETE_SUCCEEDED:
-            //advertising_start();
-            break;//PM_EVT_PEERS_DELETE_SUCCEEDED
-
-        case PM_EVT_PEERS_DELETE_FAILED:
-            // Assert.
-            APP_ERROR_CHECK(p_evt->params.peers_delete_failed_evt.error);
-            break;//PM_EVT_PEERS_DELETE_FAILED
-
-        case PM_EVT_LOCAL_DB_CACHE_APPLIED:
-            break;//PM_EVT_LOCAL_DB_CACHE_APPLIED
-
-        case PM_EVT_LOCAL_DB_CACHE_APPLY_FAILED:
-            // The local database has likely changed, send service changed indications.
-            pm_local_database_has_changed();
-            break;//PM_EVT_LOCAL_DB_CACHE_APPLY_FAILED
-
-        case PM_EVT_SERVICE_CHANGED_IND_SENT:
-            break;//PM_EVT_SERVICE_CHANGED_IND_SENT
-
-        case PM_EVT_SERVICE_CHANGED_IND_CONFIRMED:
-            break;//PM_EVT_SERVICE_CHANGED_IND_SENT
-
-        default:
-            // No implementation needed.
-            break;
-    }
-}
+    /* Possible values for addr_type:
+       BLE_GAP_ADDR_TYPE_PUBLIC,
+       BLE_GAP_ADDR_TYPE_RANDOM_STATIC,
+       BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE,
+       BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE. */
+    .addr_type = BLE_GAP_ADDR_TYPE_RANDOM_STATIC,
+    .addr      = {0x40, 0xb8, 0x37, 0x64, 0x9c, 0x4a}
+};
 
 
-/**@brief Function for the Peer Manager initialization.
- *
- * @param[in] erase_bonds  Indicates whether bonding information should be cleared from
- *                         persistent storage during initialization of the Peer Manager.
- */
-static void peer_manager_init(bool erase_bonds)
-{
-    ret_code_t err_code;
 
-    err_code = pm_init();
-    APP_ERROR_CHECK(err_code);
+ 
 
-    if (erase_bonds)
-    {
-        err_code = pm_peers_delete();
-        APP_ERROR_CHECK(err_code);
-    }
-	
-    err_code = pm_register(pm_evt_handler);
-    APP_ERROR_CHECK(err_code);
-}
 
 
 /**@brief Function for the GAP initialization.
@@ -321,13 +199,21 @@ static void gap_params_init(void)
 /**@snippet [Handling the data received over BLE] */
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
-    for (uint32_t i = 0; i < length; i++)
-    {
-        while (app_uart_put(p_data[i]) != NRF_SUCCESS);
-    }
-    while (app_uart_put('\r') != NRF_SUCCESS);
-    while (app_uart_put('\n') != NRF_SUCCESS);
+						
+						slave_data.address = p_data[1];
+						slave_data.actions = p_data[2];
+						slave_data.actions2 = p_data[3]; 
+											
+						NRF_LOG_INFO("\n	Type recieved:			0x%02x\n\r",p_data[0]);
+						NRF_LOG_INFO("	Address recieved:		0x%02x\n\r",p_data[1]);
+						NRF_LOG_INFO("	etc:				0x%02x\n\r",p_data[2]);
+						NRF_LOG_INFO("	etc:				0x%02x\n\r",p_data[3]);
+						NRF_LOG_INFO("	temp recieved:			0x%02x\n\r",p_data[4]);
+						NRF_LOG_INFO("	temp_dec recieved:		0x%02x\n\r",p_data[5]);
+						NRF_LOG_INFO("	priority:			0x%02x\n\n\r",p_data[6]);			
 }
+
+
 /**@snippet [Handling the data received over BLE] */
 
 
@@ -422,6 +308,28 @@ static void sleep_mode_enter(void)
 }
 
 
+/**@brief Function for searching a given addr in the advertisement packets.
+ *
+ * @details Use this function to parse received advertising data and to find a given
+ * addr in them.
+ *
+ * @param[in]   p_adv_report   advertising data to parse.
+ * @param[in]   p_addr   name to search.
+ * @return   true if the given name was found, false otherwise.
+ */
+static bool find_peer_addr(const ble_gap_evt_adv_report_t *p_adv_report, const ble_gap_addr_t * p_addr)
+{
+    if (p_addr->addr_type == p_adv_report->peer_addr.addr_type)
+    {
+        if (memcmp(p_addr->addr, p_adv_report->peer_addr.addr, sizeof(p_adv_report->peer_addr.addr)) == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+
 /**@brief Function for handling advertising events.
  *
  * @details This function will be called for advertising events which are passed to the application.
@@ -431,20 +339,86 @@ static void sleep_mode_enter(void)
 static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 {
     uint32_t err_code;
-
+		//ble_gap_irk_t p_gap_irks;
+	
     switch (ble_adv_evt)
     {
+				
+		case BLE_ADV_EVT_DIRECTED:
+            NRF_LOG_INFO("BLE_ADV_EVT_DIRECTED\r\n");
+            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING_DIRECTED);
+            APP_ERROR_CHECK(err_code);
+            break; 
+				
         case BLE_ADV_EVT_FAST:
             err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
             APP_ERROR_CHECK(err_code);
             break;
+				
         case BLE_ADV_EVT_IDLE:
             sleep_mode_enter();
             break;
+				
+				case BLE_ADV_EVT_FAST_WHITELIST:
+            NRF_LOG_INFO("BLE_ADV_EVT_FAST_WHITELIST\r\n");
+					NRF_LOG_INFO("BLE_ADV_EVT_FAST_WHITELIST\r\n");
+            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING_WHITELIST);
+            APP_ERROR_CHECK(err_code);
+						break; 
+			
+				case BLE_ADV_EVT_SLOW_WHITELIST:
+            NRF_LOG_INFO("BLE_ADV_EVT_SLOW_WHITELIST\r\n");
+					NRF_LOG_INFO("BLE_ADV_EVT_SLOW_WHITELIST\r\n");
+            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING_WHITELIST);
+            APP_ERROR_CHECK(err_code);
+            break; 
+				
+				case BLE_ADV_EVT_PEER_ADDR_REQUEST:
+						NRF_LOG_INFO("ADDR_request\n\r");
+						//pm_peer_data_bonding_t peer_bonding_data;
+
+            // Only Give peer address if we have a handle to the bonded peer.
+            /* if (m_peer_id != PM_PEER_ID_INVALID)
+            {
+                err_code = pm_peer_data_bonding_load(m_peer_id, &peer_bonding_data);
+                if (err_code != NRF_ERROR_NOT_FOUND)
+                {
+                    APP_ERROR_CHECK(err_code);
+
+                    ble_gap_addr_t * p_peer_addr = &(peer_bonding_data.peer_ble_id.id_addr_info);
+                    err_code = ble_advertising_peer_addr_reply(p_peer_addr);
+                    APP_ERROR_CHECK(err_code);
+                }
+            } */
+						break;
+				
+							
+				case BLE_ADV_EVT_WHITELIST_REQUEST:
+							//NRF_LOG_INFO("Whitelist_req\n\r");
+//							ble_gap_addr_t whitelist_addrs[BLE_GAP_WHITELIST_ADDR_MAX_COUNT_EDITED];
+//							ble_gap_irk_t  whitelist_irks[BLE_GAP_WHITELIST_ADDR_MAX_COUNT_EDITED];
+//							uint32_t       addr_cnt = BLE_GAP_WHITELIST_ADDR_MAX_COUNT_EDITED;
+//							uint32_t       irk_cnt  = BLE_GAP_WHITELIST_ADDR_MAX_COUNT_EDITED;
+
+//							err_code = pm_whitelist_get(whitelist_addrs, &addr_cnt,
+//                                        whitelist_irks,  &irk_cnt);
+//							APP_ERROR_CHECK(err_code);
+//							NRF_LOG_DEBUG("pm_whitelist_get returns %d addr in whitelist and %d irk whitelist\r\n",
+//                           addr_cnt,
+//                           irk_cnt);
+
+//							// Apply the whitelist.
+//							err_code = ble_advertising_whitelist_reply(whitelist_addrs, addr_cnt,
+//                                                       whitelist_irks,  irk_cnt);
+//							APP_ERROR_CHECK(err_code);				
+						
+					break;
+				
         default:
             break;
     }
 }
+
 
 
 /**@brief Function for the application's SoftDevice event handler.
@@ -454,7 +428,8 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 static void on_ble_evt(ble_evt_t * p_ble_evt)
 {
     uint32_t err_code;
-
+		const ble_gap_evt_t   * p_gap_evt = &p_ble_evt->evt.gap_evt;
+	
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
@@ -462,7 +437,21 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             APP_ERROR_CHECK(err_code);
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             break; // BLE_GAP_EVT_CONNECTED
-
+				
+				case BLE_GAP_EVT_ADV_REPORT:
+				{ 
+					//bool do_connect = false;
+            if (is_connect_per_addr)
+            {
+                if (find_peer_addr(&p_gap_evt->params.adv_report, &m_target_central_addr))
+                {
+                    NRF_LOG_INFO("Address match send connect_request.\r\n");
+                    //do_connect = true;
+                }
+            }
+                    
+					}break; // BLE_GAP_EVT_ADV_REPORT
+									
         case BLE_GAP_EVT_DISCONNECTED:
             err_code = bsp_indication_set(BSP_INDICATE_IDLE);
             APP_ERROR_CHECK(err_code);
@@ -555,7 +544,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 {
     ble_conn_params_on_ble_evt(p_ble_evt);
-		pm_on_ble_evt(p_ble_evt);
+	//pm_on_ble_evt(p_ble_evt);
     ble_nus_on_ble_evt(&m_nus, p_ble_evt);
     on_ble_evt(p_ble_evt);
     ble_advertising_on_ble_evt(p_ble_evt);
@@ -583,13 +572,14 @@ static void ble_stack_init(void)
                                                     &ble_enable_params);
     APP_ERROR_CHECK(err_code);
 
+	
     //Check the ram settings against the used number of links
     CHECK_RAM_START_ADDR(CENTRAL_LINK_COUNT,PERIPHERAL_LINK_COUNT);
 
     // Enable BLE stack.
-#if (NRF_SD_BLE_API_VERSION == 3)
+	#if (NRF_SD_BLE_API_VERSION == 3)
     ble_enable_params.gatt_enable_params.att_mtu = NRF_BLE_MAX_MTU_SIZE;
-#endif
+	#endif
     err_code = softdevice_enable(&ble_enable_params);
     APP_ERROR_CHECK(err_code);
 
@@ -779,13 +769,13 @@ static void power_manage(void)
 void init_data(void)
 {
 	
-		slave_data.type 		= 0x62;//'B'
-		slave_data.address 	= 0x00;
-		slave_data.actions  = 0x00;
-		slave_data.actions2 = 0x00;
-		slave_data.temp 		= 0xFF;
+		slave_data.type 	  = 0x62;//'B'
+		slave_data.address 	= 0xFF;
+		slave_data.actions  = 0x44;
+		slave_data.actions2 = 0xFF;
+		slave_data.temp 	  = 0xFF;
 		slave_data.temp_dec = 0xFF;
-		slave_data.priority = 0x0F;
+		slave_data.priority = init_priority;
 }
 
 
@@ -794,7 +784,7 @@ void init_data(void)
  */
 bool send_data(void)
 {
-		
+	NRF_LOG_INFO("skal til å sende: \r\n")
 	uint8_t data[ELEMENTS_IN_MY_DATA_STRUCT];
   uint32_t err_code;
 	
@@ -810,12 +800,12 @@ bool send_data(void)
 	
 	if(err_code == NRF_SUCCESS )
 	{
-			printf("\r sending complete \n\r");
+			NRF_LOG_INFO("	sending complete \n\r");
 			return true;
 	}
 	else
 		{
-			printf(" \r sending not complete, error: %i\n",err_code);
+			NRF_LOG_INFO("	sending not complete, error: %i \n\r",err_code);
 			return false;
 		}
 		
@@ -826,14 +816,17 @@ bool send_data(void)
  */
 void my_program(void)
 {
-		uint32_t err_code;
+		//uint32_t err_code;
 	
-		if(true == send_data())
+		if(false == Data_sent)
 		{
-			//err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);				/*	Ikke ferdig*/
-			printf("\r err_code my pro: %i \n",err_code);
-			power_manage();
+			if(true == send_data())
+			{
+				Data_sent = true;
+			
+			}
 		}
+			
 }
 
 
@@ -842,8 +835,8 @@ void my_program(void)
 void update_temp(void)
 {
 	  slave_data.temp 		= 0x20;
-		slave_data.temp_dec = 0x00;
-	
+	  slave_data.temp_dec   = 0x00;
+		
 }
 
 
@@ -852,7 +845,9 @@ void update_temp(void)
 static void timer_handler(void * p_context)
 {
 		update_temp();
-    printf("\r 10 sec\n");
+		Data_sent = false;
+		send_data();
+    NRF_LOG_INFO("	10 sec\n\r");
 }
 
 
@@ -889,7 +884,11 @@ int main(void)
 	
     uart_init();
     buttons_leds_init(&erase_bonds);
-		peer_manager_init(erase_bonds);
+	//peer_manager_init(erase_bonds);
+	
+		err_code = NRF_LOG_INIT(NULL);
+		APP_ERROR_CHECK(err_code);
+	
 		if (erase_bonds == true)
     {
         //NRF_LOG_DEBUG("Bonds erased!\r\n");
@@ -900,16 +899,19 @@ int main(void)
     services_init();
     advertising_init();
     conn_params_init();
-		init_data();
+	init_data();
 		
 		
 		
-    printf("\r\nUART Start!!!\r\n");
+    NRF_LOG_INFO("nUART Start!!!\r\n");
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
+    APP_ERROR_CHECK(err_code);
+
     APP_ERROR_CHECK(err_code);
     // Enter main loop.
     for (;;)
     {
+				NRF_LOG_FLUSH();
         power_manage();
     }
 }

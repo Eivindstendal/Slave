@@ -73,3 +73,7 @@
 .\_build\main.o: ..\..\..\..\..\..\components\ble\common\ble_gatt_db.h
 .\_build\main.o: ..\..\..\..\..\..\components\ble\peer_manager\peer_database.h
 .\_build\main.o: ..\..\..\..\..\..\components\ble\peer_manager\peer_manager_internal.h
+.\_build\main.o: ..\..\..\..\..\..\components\libraries\log\nrf_log.h
+.\_build\main.o: ..\..\..\..\..\..\components\libraries\log\src\nrf_log_internal.h
+.\_build\main.o: ..\..\..\..\..\..\components\libraries\log\nrf_log_ctrl.h
+.\_build\main.o: ..\..\..\..\..\..\components\libraries\log\src\nrf_log_ctrl_internal.h
