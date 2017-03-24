@@ -105,6 +105,8 @@ _build/nrf52832_xxaa_main.c.o: ../../../main.c \
  c:\sdk\components\ble\common\ble_gatt_db.h \
  c:\sdk\components\ble\peer_manager\peer_database.h \
  c:\sdk\components\ble\peer_manager\peer_manager_internal.h \
+ c:\sdk\components\ble\common\ble_conn_state.h \
+ c:\sdk\components\libraries\util\sdk_mapped_flags.h \
  c:\sdk\components\libraries\log\nrf_log.h \
  c:\sdk\components\libraries\log\src\nrf_log_internal.h \
  c:\sdk\components\libraries\log\nrf_log_ctrl.h \
@@ -327,6 +329,10 @@ c:\sdk\components\ble\common\ble_gatt_db.h:
 c:\sdk\components\ble\peer_manager\peer_database.h:
 
 c:\sdk\components\ble\peer_manager\peer_manager_internal.h:
+
+c:\sdk\components\ble\common\ble_conn_state.h:
+
+c:\sdk\components\libraries\util\sdk_mapped_flags.h:
 
 c:\sdk\components\libraries\log\nrf_log.h:
 
