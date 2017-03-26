@@ -68,9 +68,9 @@
 
 #define DEVICE_NAME                     "Nordic_UART"                               /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
-#define SLAVE_TYPE						'B'																					/**< The type slave, capital letter means it has a temp sensor*/ 
-#define max_priority					0x0A																				/**< The highest priority for the slave*/
-#define INIT_PRIORITY					0x14																				/**< The start up priority*/
+#define SLAVE_TYPE						'B'																										/**< The type slave, capital letter means it has a temp sensor*/ 
+#define HIGH_PRIORITY					0x0F																									/**< The highest priority for the slave*/
+#define LOW_PRIORITY					0x19																									/**< The start up priority*/
 
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
@@ -86,6 +86,7 @@
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 #define TEMP_UPDATE_INTERVAL						20000																				/**< Number of milliseconds the temperature should be calculated*/
+#define ACK_WAIT_INTERVAL								5000																				/**< Number of milliseconds waiting for ack*/
 
 #define DEAD_BEEF                       0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
@@ -109,6 +110,7 @@
 #define NORMAL_MODE 0U
 
 APP_TIMER_DEF(m_temp_timer);
+APP_TIMER_DEF(ack_timer);
 
 //static pm_peer_id_t m_peer_id;                             												  /**< Device reference handle to the current bonded central. */
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
@@ -116,23 +118,24 @@ static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
 bool send_data(void);
-void my_program(void);
-static bool Data_sent = false;
+bool send_ack(void);
+bool waiting_ack = false;
 
 /* Variables for I2C temp sensor */
 static volatile bool m_xfer_done = false;
 static const nrf_drv_twi_t m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
 static uint8_t m_sample;
+void update_state(void);
 
 
 typedef struct 
 {
 	uint8_t type;												/**< Type of slave device */
 	uint8_t address;										/**< Address given by central */
-	uint8_t actions;										/**< etc */		
-	uint8_t actions2;										/**< etc */
-	uint8_t temp;												/**< Integer part of extern temp sensor on NRF52 */
-	uint8_t temp_dec;										/**< Fractional part of extern temp semsor on NRF52 */
+	uint8_t ack;										/**< etc */		
+	uint8_t state;										/**< etc */
+	uint8_t wanted_temp;												/**< Integer part of extern temp sensor on NRF52 */
+	uint8_t current_temp;										/**< Fractional part of extern temp semsor on NRF52 */
 	uint8_t priority;										/**< The priority of the slave device */
 }my_data;
 	
@@ -221,16 +224,36 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 {
 						
 						slave_data.address = p_data[1];
-						slave_data.actions = p_data[2];
-						slave_data.actions2 = p_data[3]; 
-											
-						NRF_LOG_INFO("	Type recieved:			0x%02x\n\r",p_data[0]);
-						NRF_LOG_INFO("	Address recieved:		0x%02x\n\r",p_data[1]);
-						NRF_LOG_INFO("	etc:				0x%02x\n\r",p_data[2]);
-						NRF_LOG_INFO("	etc:				0x%02x\n\r",p_data[3]);
-						NRF_LOG_INFO("	temp recieved:			0x%02x\n\r",p_data[4]);
-						NRF_LOG_INFO("	temp_dec recieved:		0x%02x\n\r",p_data[5]);
-						NRF_LOG_INFO("	priority:			0x%02x\n\n\r",p_data[6]);			
+						slave_data.state = p_data[3]; 
+						slave_data.wanted_temp = p_data[4];
+	
+	
+						//Check if ack or data packet
+						if(0 == p_data[2])
+						{
+							send_ack();	
+							
+						}else if(1== p_data[2])
+						{
+							app_timer_stop(ack_timer);
+							waiting_ack = false;
+						}
+						
+						//Check for updated state
+						if(p_data[3] != slave_data.state&& 0xFF != p_data[3] )
+						{
+							slave_data.state = p_data[3]; 
+							update_state();
+						}
+						
+						
+						NRF_LOG_INFO("	Type:				%c\n\r",p_data[0]);
+						NRF_LOG_INFO("	Address recieved:		%d\n\r",p_data[1]);
+						NRF_LOG_INFO("	ack recieved:			%d\n\r",p_data[2]);
+						NRF_LOG_INFO("	state:				%d\n\r",p_data[3]);
+						NRF_LOG_INFO("	Wanted temp:			%d\n\r",p_data[4]);
+						NRF_LOG_INFO("	Current_temp:			%d\n\r",p_data[5]);
+						NRF_LOG_INFO("	priority:			%d\n\n\r",p_data[6]);			
 }
 
 
@@ -571,7 +594,7 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     on_ble_evt(p_ble_evt);
     ble_advertising_on_ble_evt(p_ble_evt);
     bsp_btn_ble_on_ble_evt(p_ble_evt);
-		my_program();
+		
 }
 
 
@@ -652,78 +675,7 @@ void bsp_event_handler(bsp_event_t event)
 }
 
 
-///**@brief   Function for handling app_uart events.
-// *
-// * @details This function will receive a single character from the app_uart module and append it to
-// *          a string. The string will be be sent over BLE when the last character received was a
-// *          'new line' i.e '\r\n' (hex 0x0D) or if the string has reached a length of
-// *          @ref NUS_MAX_DATA_LENGTH.
-// */
-///**@snippet [Handling the data received over UART] */
-//void uart_event_handle(app_uart_evt_t * p_event)
-//{
-//    static uint8_t data_array[BLE_NUS_MAX_DATA_LEN];
-//    static uint8_t index = 0;
-//    uint32_t       err_code;
 
-//    switch (p_event->evt_type)
-//    {
-//        case APP_UART_DATA_READY:
-//            UNUSED_VARIABLE(app_uart_get(&data_array[index]));
-//            index++;
-
-//            if ((data_array[index - 1] == '\n') || (index >= (BLE_NUS_MAX_DATA_LEN)))
-//            {
-//                err_code = ble_nus_string_send(&m_nus, data_array, index);
-//                if (err_code != NRF_ERROR_INVALID_STATE)
-//                {
-//                    APP_ERROR_CHECK(err_code);
-//                }
-
-//                index = 0;
-//            }
-//            break;
-
-//        case APP_UART_COMMUNICATION_ERROR:
-//            APP_ERROR_HANDLER(p_event->data.error_communication);
-//            break;
-
-//        case APP_UART_FIFO_ERROR:
-//            APP_ERROR_HANDLER(p_event->data.error_code);
-//            break;
-
-//        default:
-//            break;
-//    }
-//}
-/**@snippet [Handling the data received over UART] */
-
-
-///**@brief  Function for initializing the UART module.
-// */
-///**@snippet [UART Initialization] */
-//static void uart_init(void)
-//{
-//    uint32_t                     err_code;
-//    const app_uart_comm_params_t comm_params =
-//    {
-//        RX_PIN_NUMBER,
-//        TX_PIN_NUMBER,
-//        RTS_PIN_NUMBER,
-//        CTS_PIN_NUMBER,
-//        APP_UART_FLOW_CONTROL_DISABLED,
-//        false,
-//        UART_BAUDRATE_BAUDRATE_Baud115200
-//    };
-
-//    APP_UART_FIFO_INIT( &comm_params,
-//                       UART_RX_BUF_SIZE,
-//                       UART_TX_BUF_SIZE,
-//                       uart_event_handle,
-//                       APP_IRQ_PRIORITY_LOWEST,
-//                       err_code);
-//    APP_ERROR_CHECK(err_code);
-//}
 /**@snippet [UART Initialization] */
 
 
@@ -778,6 +730,15 @@ static void buttons_leds_init(bool * p_erase_bonds)
 }
 
 
+/**@brief Function for turning on or off reley.
+ */
+void update_state()
+{
+	if(1 == slave_data.state)
+		bsp_board_led_on(2);
+	else
+		bsp_board_led_off(2);
+}
 
 
 /**@brief Function for placing the application in low power state while waiting for events.
@@ -796,11 +757,11 @@ void init_data(void)
 	
 		slave_data.type 	  = SLAVE_TYPE;
 		slave_data.address 	= 0xFF;
-		slave_data.actions  = 0x44;
-		slave_data.actions2 = 0xFF;
-		slave_data.temp 	  = 0xFF;
-		slave_data.temp_dec = 0xFF;
-		slave_data.priority = INIT_PRIORITY;
+		slave_data.ack  = 0;
+		slave_data.state = 1;
+		slave_data.wanted_temp = 0xFF;
+		slave_data.current_temp = 0xFF;
+		slave_data.priority = LOW_PRIORITY;
 }
 
 
@@ -815,17 +776,27 @@ bool send_data(void)
 	
 	data[0] = slave_data.type;
 	data[1] = slave_data.address;
-	data[2] = slave_data.actions;
-	data[3] = slave_data.actions2;
-	data[4] = slave_data.temp;
-	data[5] = slave_data.temp_dec;
+	data[2] = slave_data.ack;
+	data[3] = slave_data.state;
+	data[4] = slave_data.wanted_temp;
+	data[5] = slave_data.current_temp;
 	data[6] = slave_data.priority;
-		
+	
+if(false == waiting_ack)
+{
 		err_code = ble_nus_string_send(&m_nus,data,ELEMENTS_IN_MY_DATA_STRUCT);
+		waiting_ack = true;
+}	
+		
+	
 	
 	if(err_code == NRF_SUCCESS )
 	{
 			NRF_LOG_INFO("	sending complete \n\r");
+			err_code = app_timer_start(ack_timer, 
+															 APP_TIMER_TICKS(ACK_WAIT_INTERVAL, 
+															 APP_TIMER_PRESCALER),
+																			NULL);
 			return true;
 	}
 	else
@@ -833,24 +804,65 @@ bool send_data(void)
 			NRF_LOG_INFO("	sending not complete, error: %i \n\r",err_code);
 			return false;
 		}
+}
+
+/**@brief Function to send ack over Nordic Uart serial
+ * @param[out] bool true or false, sending successful not not
+ */
+bool send_ack(void)
+{
+	
+	uint8_t data[ELEMENTS_IN_MY_DATA_STRUCT];
+  uint32_t err_code;
+	
+	data[0] = slave_data.type;
+	data[1] = slave_data.address;
+	data[2] = 1;
+	data[3] = slave_data.state;
+	data[4] = slave_data.wanted_temp;
+	data[5] = slave_data.current_temp;
+	data[6] = slave_data.priority;
+	
+	err_code = ble_nus_string_send(&m_nus,data,ELEMENTS_IN_MY_DATA_STRUCT);
+	
+	if(err_code == NRF_SUCCESS )
+	{
+			NRF_LOG_INFO("	ack sent \n\r");
 		
+			return true;
+	}
+	else
+		{
+			NRF_LOG_INFO("	ack feiled to send n\r",err_code);
+			return false;
+		}
 }
 
 
 /**@brief Application handler
  */
-void my_program(void)
+void update_priority(void)
 {
-		//uint32_t err_code;
-	
-		if(false == Data_sent)
+		if((slave_data.current_temp<slave_data.wanted_temp)&&(slave_data.wanted_temp - slave_data.current_temp)> 2 )
 		{
-			if(true == send_data())
+				//NRF_LOG_INFO("	New priority: HIGH\r\n");
+			if(LOW_PRIORITY != slave_data.priority)
 			{
-				Data_sent = true;
-			
+				send_data();
+				NRF_LOG_INFO("	New priority: LOW\r\n")
 			}
+				slave_data.priority = LOW_PRIORITY;
+		}else
+		{
+			if(HIGH_PRIORITY != slave_data.priority)
+			{
+				send_data();
+				NRF_LOG_INFO("	New priority: HIGH\r\n")
+			}
+			slave_data.priority = LOW_PRIORITY;
 		}
+			
+			
 			
 }
 
@@ -884,8 +896,15 @@ void LM75B_set_mode(void)
  */
 __STATIC_INLINE void data_handler(uint8_t temp)
 {
-    //NRF_LOG_INFO("	Temperature: 0x%02x Celsius degrees.\r\n", temp);
-		slave_data.temp = temp;
+		if(temp != slave_data.current_temp)
+		{
+			
+			slave_data.current_temp = temp;
+			update_priority();
+			slave_data.ack = 0;
+			//NRF_LOG_INFO("	New temp: %d \r\n",temp);
+		}
+		
 }
 
 
@@ -949,15 +968,24 @@ static void read_sensor_data()
  */
 static void timer_handler(void * p_context)
 {	
-	//update_temp();
-	Data_sent = false;
-	send_data();
-    NRF_LOG_INFO("	20 sec\n\r");
+		if(0xFF == slave_data.address)
+		{
+			NRF_LOG_INFO("	What is my addr ? \r\n");
+			send_data();
+		}
+			
+		
 		NRF_LOG_INFO("	read_sensor_data: %i \r\n",m_sample);
-		NRF_LOG_INFO("	read_sensor_data: 0x%02x \r\n",m_sample);
-		//read_sensor_data();	
+		
 }
 
+/**@brief  Timeout handler for the repeated timer
+ */
+static void ack_timer_handler(void * p_context)
+{	
+		send_data();
+	
+}
 
 /**@brief Create timers.
  */
@@ -970,6 +998,11 @@ static void create_timers()
 																timer_handler);
 
     APP_ERROR_CHECK(err_code);
+		err_code = app_timer_create(&ack_timer, 
+																APP_TIMER_MODE_SINGLE_SHOT,
+																ack_timer_handler);
+	
+		APP_ERROR_CHECK(err_code);
 }
 
 
@@ -993,8 +1026,8 @@ int main(void)
 	  LM75B_set_mode();
     //uart_init();
     buttons_leds_init(&erase_bonds);
-	//peer_manager_init(erase_bonds);
 	
+	bsp_board_leds_init();
 	err_code = NRF_LOG_INIT(NULL);
 	APP_ERROR_CHECK(err_code);
 	
@@ -1009,6 +1042,7 @@ int main(void)
     advertising_init();
     conn_params_init();
 		init_data();
+		update_state();
 	
 		
     NRF_LOG_INFO("	UART Start!!!\r\n");
