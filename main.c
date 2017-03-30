@@ -69,7 +69,7 @@
 #define DEVICE_NAME                     "Nordic_UART"                               /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 #define SLAVE_TYPE						'B'																										/**< The type slave, capital letter means it has a temp sensor*/ 
-#define HIGH_PRIORITY					0x0F																									/**< The highest priority for the slave*/
+#define NORMAL_PRIORITY					0x0F																									/**< The highest priority for the slave*/
 #define LOW_PRIORITY					0x19																									/**< The start up priority*/
 
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
@@ -128,7 +128,7 @@ static uint8_t m_sample;
 void update_state(void);
 
 
-typedef struct 
+struct slave_data_struct
 {
 	uint8_t type;												/**< Type of slave device */
 	uint8_t address;										/**< Address given by central */
@@ -137,9 +137,9 @@ typedef struct
 	uint8_t wanted_temp;												/**< Integer part of extern temp sensor on NRF52 */
 	uint8_t current_temp;										/**< Fractional part of extern temp semsor on NRF52 */
 	uint8_t priority;										/**< The priority of the slave device */
-}my_data;
+};
 	
-my_data slave_data;
+struct slave_data_struct *slave_data;
 
 
 /**@brief Function for assert macro callback.
@@ -223,9 +223,9 @@ static void gap_params_init(void)
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
 						
-						slave_data.address = p_data[1];
-						slave_data.state = p_data[3]; 
-						slave_data.wanted_temp = p_data[4];
+						slave_data->address = p_data[1];
+						slave_data->state = p_data[3]; 
+						slave_data->wanted_temp = p_data[4];
 	
 	
 						//Check if ack or data packet
@@ -240,9 +240,9 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 						}
 						
 						//Check for updated state
-						if(p_data[3] != slave_data.state&& 0xFF != p_data[3] )
+						if(p_data[3] != slave_data->state&& 0xFF != p_data[3] )
 						{
-							slave_data.state = p_data[3]; 
+							slave_data->state = p_data[3]; 
 							update_state();
 						}
 						
@@ -734,10 +734,22 @@ static void buttons_leds_init(bool * p_erase_bonds)
  */
 void update_state()
 {
-	if(1 == slave_data.state)
+	if(100 == slave_data->state)
 		bsp_board_led_on(2);
 	else
 		bsp_board_led_off(2);
+}
+
+
+/**@brief Thermostate function
+ */
+void thermostate(void)
+{
+	if(slave_data->wanted_temp > slave_data->current_temp && 100 == slave_data->state)
+		bsp_board_led_on(2);
+	else
+		bsp_board_led_off(2);
+
 }
 
 
@@ -755,13 +767,13 @@ static void power_manage(void)
 void init_data(void)
 {
 	
-		slave_data.type 	  = SLAVE_TYPE;
-		slave_data.address 	= 0xFF;
-		slave_data.ack  = 0;
-		slave_data.state = 1;
-		slave_data.wanted_temp = 0xFF;
-		slave_data.current_temp = 0xFF;
-		slave_data.priority = LOW_PRIORITY;
+		slave_data->type 	  = SLAVE_TYPE;
+		slave_data->address 	= 0xFF;
+		slave_data->ack  = 0;
+		slave_data->state = 100;
+		slave_data->wanted_temp = 0xFF;
+		slave_data->current_temp = 0xFF;
+		slave_data->priority = LOW_PRIORITY;
 }
 
 
@@ -774,22 +786,20 @@ bool send_data(void)
 	uint8_t data[ELEMENTS_IN_MY_DATA_STRUCT];
   uint32_t err_code;
 	
-	data[0] = slave_data.type;
-	data[1] = slave_data.address;
-	data[2] = slave_data.ack;
-	data[3] = slave_data.state;
-	data[4] = slave_data.wanted_temp;
-	data[5] = slave_data.current_temp;
-	data[6] = slave_data.priority;
+	data[0] = slave_data->type;
+	data[1] = slave_data->address;
+	data[2] = 0;
+	data[3] = slave_data->state;
+	data[4] = slave_data->wanted_temp;
+	data[5] = slave_data->current_temp;
+	data[6] = slave_data->priority;
 	
 if(false == waiting_ack)
 {
 		err_code = ble_nus_string_send(&m_nus,data,ELEMENTS_IN_MY_DATA_STRUCT);
 		waiting_ack = true;
 }	
-		
-	
-	
+
 	if(err_code == NRF_SUCCESS )
 	{
 			NRF_LOG_INFO("	sending complete \n\r");
@@ -815,13 +825,13 @@ bool send_ack(void)
 	uint8_t data[ELEMENTS_IN_MY_DATA_STRUCT];
   uint32_t err_code;
 	
-	data[0] = slave_data.type;
-	data[1] = slave_data.address;
+	data[0] = slave_data->type;
+	data[1] = slave_data->address;
 	data[2] = 1;
-	data[3] = slave_data.state;
-	data[4] = slave_data.wanted_temp;
-	data[5] = slave_data.current_temp;
-	data[6] = slave_data.priority;
+	data[3] = slave_data->state;
+	data[4] = slave_data->wanted_temp;
+	data[5] = slave_data->current_temp;
+	data[6] = slave_data->priority;
 	
 	err_code = ble_nus_string_send(&m_nus,data,ELEMENTS_IN_MY_DATA_STRUCT);
 	
@@ -843,23 +853,23 @@ bool send_ack(void)
  */
 void update_priority(void)
 {
-		if((slave_data.current_temp<slave_data.wanted_temp)&&(slave_data.wanted_temp - slave_data.current_temp)> 2 )
+		if((slave_data->current_temp<slave_data->wanted_temp)&&(slave_data->wanted_temp - slave_data->current_temp)> 2 )
 		{
 				//NRF_LOG_INFO("	New priority: HIGH\r\n");
-			if(LOW_PRIORITY != slave_data.priority)
+			if(LOW_PRIORITY != slave_data->priority)
 			{
 				send_data();
 				NRF_LOG_INFO("	New priority: LOW\r\n")
 			}
-				slave_data.priority = LOW_PRIORITY;
+				slave_data->priority = LOW_PRIORITY;
 		}else
 		{
-			if(HIGH_PRIORITY != slave_data.priority)
+			if(NORMAL_PRIORITY != slave_data->priority)
 			{
 				send_data();
-				NRF_LOG_INFO("	New priority: HIGH\r\n")
+				NRF_LOG_INFO("	New priority: NORMAL\r\n")
 			}
-			slave_data.priority = LOW_PRIORITY;
+			slave_data->priority = LOW_PRIORITY;
 		}
 			
 			
@@ -896,13 +906,13 @@ void LM75B_set_mode(void)
  */
 __STATIC_INLINE void data_handler(uint8_t temp)
 {
-		if(temp != slave_data.current_temp)
+		if(temp != slave_data->current_temp)
 		{
 			
-			slave_data.current_temp = temp;
+			slave_data->current_temp = temp;
 			update_priority();
-			slave_data.ack = 0;
-			//NRF_LOG_INFO("	New temp: %d \r\n",temp);
+			thermostate();
+			
 		}
 		
 }
@@ -968,7 +978,7 @@ static void read_sensor_data()
  */
 static void timer_handler(void * p_context)
 {	
-		if(0xFF == slave_data.address)
+		if(0xFF == slave_data->address)
 		{
 			NRF_LOG_INFO("	What is my addr ? \r\n");
 			send_data();
