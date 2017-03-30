@@ -19,17 +19,6 @@ _build/nrf52832_xxaa_main.c.o: ../../../main.c \
  c:\program\ files\ (x86)\gnu\ tools\ arm\ embedded\4.9\ 2015q3\arm-none-eabi\include\sys\cdefs.h \
  c:\program\ files\ (x86)\gnu\ tools\ arm\ embedded\4.9\ 2015q3\arm-none-eabi\include\sys\string.h \
  c:\sdk\components\libraries\util\nordic_common.h \
- c:\sdk\components\device\nrf.h c:\sdk\components\device\nrf52.h \
- c:\sdk\components\toolchain\cmsis\include\core_cm4.h \
- c:\sdk\components\toolchain\cmsis\include\core_cmInstr.h \
- c:\sdk\components\toolchain\cmsis\include\cmsis_gcc.h \
- c:\sdk\components\toolchain\cmsis\include\core_cmFunc.h \
- c:\sdk\components\toolchain\cmsis\include\core_cmSimd.h \
- c:\sdk\components\toolchain\system_nrf52.h \
- c:\sdk\components\device\nrf52_bitfields.h \
- c:\sdk\components\device\nrf51_to_nrf52.h \
- c:\sdk\components\device\nrf52_name_change.h \
- c:\sdk\components\device\compiler_abstraction.h \
  c:\sdk\components\softdevice\s132\headers\ble_hci.h \
  c:\sdk\components\ble\common\ble_advdata.h \
  c:\program\ files\ (x86)\gnu\ tools\ arm\ embedded\4.9\ 2015q3\lib\gcc\arm-none-eabi\4.9.3\include\stdbool.h \
@@ -45,6 +34,17 @@ _build/nrf52832_xxaa_main.c.o: ../../../main.c \
  c:\sdk\components\softdevice\s132\headers\ble_gattc.h \
  c:\sdk\components\softdevice\s132\headers\ble_gatts.h \
  c:\sdk\components\libraries\util\app_util.h \
+ c:\sdk\components\device\compiler_abstraction.h \
+ c:\sdk\components\device\nrf.h c:\sdk\components\device\nrf52.h \
+ c:\sdk\components\toolchain\cmsis\include\core_cm4.h \
+ c:\sdk\components\toolchain\cmsis\include\core_cmInstr.h \
+ c:\sdk\components\toolchain\cmsis\include\cmsis_gcc.h \
+ c:\sdk\components\toolchain\cmsis\include\core_cmFunc.h \
+ c:\sdk\components\toolchain\cmsis\include\core_cmSimd.h \
+ c:\sdk\components\toolchain\system_nrf52.h \
+ c:\sdk\components\device\nrf52_bitfields.h \
+ c:\sdk\components\device\nrf51_to_nrf52.h \
+ c:\sdk\components\device\nrf52_name_change.h \
  c:\sdk\components\device\compiler_abstraction.h \
  c:\sdk\components\ble\ble_advertising\ble_advertising.h \
  c:\sdk\components\softdevice\s132\headers\nrf_error.h \
@@ -91,22 +91,25 @@ _build/nrf52832_xxaa_main.c.o: ../../../main.c \
  c:\sdk\components\boards\pca10040.h \
  c:\sdk\components\libraries\bsp\bsp_btn_ble.h \
  c:\sdk\components\libraries\bsp\bsp.h \
- c:\sdk\components\drivers_nrf\clock\nrf_drv_clock.h \
- c:\sdk\components\libraries\util\sdk_errors.h \
- c:\sdk\components\drivers_nrf\hal\nrf_clock.h \
- c:\sdk\components\drivers_nrf\common\nrf_drv_common.h \
+ c:\sdk\components\ble\peer_manager\peer_manager.h \
  c:\sdk\components\libraries\util\sdk_common.h \
  c:\sdk\components\libraries\util\sdk_os.h \
  c:\sdk\components\libraries\util\app_util.h \
  c:\sdk\components\libraries\util\sdk_macros.h \
- c:\sdk\components\drivers_nrf\hal\nrf_temp.h \
- c:\sdk\components\ble\peer_manager\peer_manager.h \
  c:\sdk\components\ble\peer_manager\peer_manager_types.h \
  c:\sdk\components\ble\common\ble_gatt_db.h \
  c:\sdk\components\ble\peer_manager\peer_database.h \
  c:\sdk\components\ble\peer_manager\peer_manager_internal.h \
+ c:\sdk\components\libraries\util\sdk_errors.h \
  c:\sdk\components\ble\common\ble_conn_state.h \
  c:\sdk\components\libraries\util\sdk_mapped_flags.h \
+ c:\sdk\components\drivers_nrf\clock\nrf_drv_clock.h \
+ c:\sdk\components\drivers_nrf\hal\nrf_clock.h \
+ c:\sdk\components\drivers_nrf\common\nrf_drv_common.h \
+ c:\sdk\components\drivers_nrf\hal\nrf_temp.h \
+ c:\sdk\components\drivers_nrf\twi_master\nrf_drv_twi.h \
+ c:\sdk\components\drivers_nrf\hal\nrf_twi.h \
+ c:\sdk\components\drivers_nrf\hal\nrf_twim.h \
  c:\sdk\components\libraries\log\nrf_log.h \
  c:\sdk\components\libraries\log\src\nrf_log_internal.h \
  c:\sdk\components\libraries\log\nrf_log_ctrl.h \
@@ -152,30 +155,6 @@ c:\program\ files\ (x86)\gnu\ tools\ arm\ embedded\4.9\ 2015q3\arm-none-eabi\inc
 
 c:\sdk\components\libraries\util\nordic_common.h:
 
-c:\sdk\components\device\nrf.h:
-
-c:\sdk\components\device\nrf52.h:
-
-c:\sdk\components\toolchain\cmsis\include\core_cm4.h:
-
-c:\sdk\components\toolchain\cmsis\include\core_cmInstr.h:
-
-c:\sdk\components\toolchain\cmsis\include\cmsis_gcc.h:
-
-c:\sdk\components\toolchain\cmsis\include\core_cmFunc.h:
-
-c:\sdk\components\toolchain\cmsis\include\core_cmSimd.h:
-
-c:\sdk\components\toolchain\system_nrf52.h:
-
-c:\sdk\components\device\nrf52_bitfields.h:
-
-c:\sdk\components\device\nrf51_to_nrf52.h:
-
-c:\sdk\components\device\nrf52_name_change.h:
-
-c:\sdk\components\device\compiler_abstraction.h:
-
 c:\sdk\components\softdevice\s132\headers\ble_hci.h:
 
 c:\sdk\components\ble\common\ble_advdata.h:
@@ -205,6 +184,30 @@ c:\sdk\components\softdevice\s132\headers\ble_gattc.h:
 c:\sdk\components\softdevice\s132\headers\ble_gatts.h:
 
 c:\sdk\components\libraries\util\app_util.h:
+
+c:\sdk\components\device\compiler_abstraction.h:
+
+c:\sdk\components\device\nrf.h:
+
+c:\sdk\components\device\nrf52.h:
+
+c:\sdk\components\toolchain\cmsis\include\core_cm4.h:
+
+c:\sdk\components\toolchain\cmsis\include\core_cmInstr.h:
+
+c:\sdk\components\toolchain\cmsis\include\cmsis_gcc.h:
+
+c:\sdk\components\toolchain\cmsis\include\core_cmFunc.h:
+
+c:\sdk\components\toolchain\cmsis\include\core_cmSimd.h:
+
+c:\sdk\components\toolchain\system_nrf52.h:
+
+c:\sdk\components\device\nrf52_bitfields.h:
+
+c:\sdk\components\device\nrf51_to_nrf52.h:
+
+c:\sdk\components\device\nrf52_name_change.h:
 
 c:\sdk\components\device\compiler_abstraction.h:
 
@@ -302,13 +305,7 @@ c:\sdk\components\libraries\bsp\bsp_btn_ble.h:
 
 c:\sdk\components\libraries\bsp\bsp.h:
 
-c:\sdk\components\drivers_nrf\clock\nrf_drv_clock.h:
-
-c:\sdk\components\libraries\util\sdk_errors.h:
-
-c:\sdk\components\drivers_nrf\hal\nrf_clock.h:
-
-c:\sdk\components\drivers_nrf\common\nrf_drv_common.h:
+c:\sdk\components\ble\peer_manager\peer_manager.h:
 
 c:\sdk\components\libraries\util\sdk_common.h:
 
@@ -318,10 +315,6 @@ c:\sdk\components\libraries\util\app_util.h:
 
 c:\sdk\components\libraries\util\sdk_macros.h:
 
-c:\sdk\components\drivers_nrf\hal\nrf_temp.h:
-
-c:\sdk\components\ble\peer_manager\peer_manager.h:
-
 c:\sdk\components\ble\peer_manager\peer_manager_types.h:
 
 c:\sdk\components\ble\common\ble_gatt_db.h:
@@ -330,9 +323,25 @@ c:\sdk\components\ble\peer_manager\peer_database.h:
 
 c:\sdk\components\ble\peer_manager\peer_manager_internal.h:
 
+c:\sdk\components\libraries\util\sdk_errors.h:
+
 c:\sdk\components\ble\common\ble_conn_state.h:
 
 c:\sdk\components\libraries\util\sdk_mapped_flags.h:
+
+c:\sdk\components\drivers_nrf\clock\nrf_drv_clock.h:
+
+c:\sdk\components\drivers_nrf\hal\nrf_clock.h:
+
+c:\sdk\components\drivers_nrf\common\nrf_drv_common.h:
+
+c:\sdk\components\drivers_nrf\hal\nrf_temp.h:
+
+c:\sdk\components\drivers_nrf\twi_master\nrf_drv_twi.h:
+
+c:\sdk\components\drivers_nrf\hal\nrf_twi.h:
+
+c:\sdk\components\drivers_nrf\hal\nrf_twim.h:
 
 c:\sdk\components\libraries\log\nrf_log.h:
 

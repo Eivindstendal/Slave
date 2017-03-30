@@ -3,7 +3,7 @@
 <title>Static Call Graph - [.\_build\nrf52832_xxaa.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image .\_build\nrf52832_xxaa.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060183: Last Updated: Thu Mar 30 13:56:25 2017
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060183: Last Updated: Thu Mar 30 17:17:22 2017
 <BR><P>
 <H3>Maximum Stack Usage =        448 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -876,7 +876,7 @@ Global Symbols
 <LI><a href="#[cf]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;gc_record_copy
 </UL>
 
-<P><STRONG><a name="[e3]"></a>init_data</STRONG> (Thumb, 30 bytes, Stack size 0 bytes, main.o(i.init_data))
+<P><STRONG><a name="[e3]"></a>init_data</STRONG> (Thumb, 28 bytes, Stack size 0 bytes, main.o(i.init_data))
 <BR><BR>[Called By]<UL><LI><a href="#[2f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
@@ -1151,7 +1151,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[2f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[10d]"></a>send_ack</STRONG> (Thumb, 86 bytes, Stack size 16 bytes, main.o(i.send_ack))
+<P><STRONG><a name="[10d]"></a>send_ack</STRONG> (Thumb, 84 bytes, Stack size 16 bytes, main.o(i.send_ack))
 <BR><BR>[Stack]<UL><LI>Max Depth = 84<LI>Call Chain = send_ack &rArr; nrf_log_frontend_std_1 &rArr; buf_prealloc &rArr; app_util_critical_region_enter
 </UL>
 <BR>[Calls]<UL><LI><a href="#[10a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_log_frontend_std_1
@@ -1161,7 +1161,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[3e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nus_data_handler
 </UL>
 
-<P><STRONG><a name="[67]"></a>send_data</STRONG> (Thumb, 108 bytes, Stack size 16 bytes, main.o(i.send_data))
+<P><STRONG><a name="[67]"></a>send_data</STRONG> (Thumb, 110 bytes, Stack size 16 bytes, main.o(i.send_data))
 <BR><BR>[Stack]<UL><LI>Max Depth = 84<LI>Call Chain = send_data &rArr; nrf_log_frontend_std_1 &rArr; buf_prealloc &rArr; app_util_critical_region_enter
 </UL>
 <BR>[Calls]<UL><LI><a href="#[10a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_log_frontend_std_1
@@ -1217,14 +1217,14 @@ Global Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[e7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_drv_clock_init
 </UL>
 
-<P><STRONG><a name="[11e]"></a>thermostate</STRONG> (Thumb, 30 bytes, Stack size 0 bytes, main.o(i.thermostate))
+<P><STRONG><a name="[11e]"></a>thermostate</STRONG> (Thumb, 28 bytes, Stack size 0 bytes, main.o(i.thermostate))
 <BR><BR>[Calls]<UL><LI><a href="#[aa]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;bsp_board_led_on
 <LI><a href="#[a8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;bsp_board_led_off
 </UL>
 <BR>[Called By]<UL><LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;twi_handler
 </UL>
 
-<P><STRONG><a name="[45]"></a>twi_handler</STRONG> (Thumb, 42 bytes, Stack size 8 bytes, main.o(i.twi_handler))
+<P><STRONG><a name="[45]"></a>twi_handler</STRONG> (Thumb, 44 bytes, Stack size 8 bytes, main.o(i.twi_handler))
 <BR><BR>[Stack]<UL><LI>Max Depth = 108<LI>Call Chain = twi_handler &rArr; update_priority &rArr; send_data &rArr; nrf_log_frontend_std_1 &rArr; buf_prealloc &rArr; app_util_critical_region_enter
 </UL>
 <BR>[Calls]<UL><LI><a href="#[123]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;update_priority
@@ -1242,7 +1242,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[2f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[123]"></a>update_priority</STRONG> (Thumb, 60 bytes, Stack size 16 bytes, main.o(i.update_priority))
+<P><STRONG><a name="[123]"></a>update_priority</STRONG> (Thumb, 58 bytes, Stack size 16 bytes, main.o(i.update_priority))
 <BR><BR>[Stack]<UL><LI>Max Depth = 100<LI>Call Chain = update_priority &rArr; send_data &rArr; nrf_log_frontend_std_1 &rArr; buf_prealloc &rArr; app_util_critical_region_enter
 </UL>
 <BR>[Calls]<UL><LI><a href="#[7e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_log_frontend_std_0
@@ -1251,7 +1251,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;twi_handler
 </UL>
 
-<P><STRONG><a name="[e4]"></a>update_state</STRONG> (Thumb, 22 bytes, Stack size 0 bytes, main.o(i.update_state))
+<P><STRONG><a name="[e4]"></a>update_state</STRONG> (Thumb, 20 bytes, Stack size 0 bytes, main.o(i.update_state))
 <BR><BR>[Calls]<UL><LI><a href="#[aa]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;bsp_board_led_on
 <LI><a href="#[a8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;bsp_board_led_off
 </UL>
@@ -1329,8 +1329,8 @@ Local Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> main.o(i.advertising_init)
 </UL>
-<P><STRONG><a name="[9e]"></a>on_ble_evt</STRONG> (Thumb, 300 bytes, Stack size 56 bytes, main.o(i.on_ble_evt))
-<BR><BR>[Stack]<UL><LI>Max Depth = 200<LI>Call Chain = on_ble_evt &rArr; app_error_handler_bare &rArr; app_error_fault_handler &rArr; nrf_log_blocking_backend_set &rArr; nrf_log_backend_init &rArr; nrf_drv_uart_init &rArr; apply_config &rArr; nrf_gpio_cfg_output &rArr; nrf_gpio_cfg
+<P><STRONG><a name="[9e]"></a>on_ble_evt</STRONG> (Thumb, 296 bytes, Stack size 48 bytes, main.o(i.on_ble_evt))
+<BR><BR>[Stack]<UL><LI>Max Depth = 192<LI>Call Chain = on_ble_evt &rArr; app_error_handler_bare &rArr; app_error_fault_handler &rArr; nrf_log_blocking_backend_set &rArr; nrf_log_backend_init &rArr; nrf_drv_uart_init &rArr; apply_config &rArr; nrf_gpio_cfg_output &rArr; nrf_gpio_cfg
 </UL>
 <BR>[Calls]<UL><LI><a href="#[7e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_log_frontend_std_0
 <LI><a href="#[b6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;bsp_indication_set
@@ -1359,7 +1359,7 @@ Local Symbols
 <LI><a href="#[33]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_adv_evt
 </UL>
 
-<P><STRONG><a name="[3b]"></a>timer_handler</STRONG> (Thumb, 38 bytes, Stack size 8 bytes, main.o(i.timer_handler))
+<P><STRONG><a name="[3b]"></a>timer_handler</STRONG> (Thumb, 40 bytes, Stack size 8 bytes, main.o(i.timer_handler))
 <BR><BR>[Stack]<UL><LI>Max Depth = 92<LI>Call Chain = timer_handler &rArr; send_data &rArr; nrf_log_frontend_std_1 &rArr; buf_prealloc &rArr; app_util_critical_region_enter
 </UL>
 <BR>[Calls]<UL><LI><a href="#[10a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_log_frontend_std_1
