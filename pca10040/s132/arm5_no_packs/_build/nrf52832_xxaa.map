@@ -121,7 +121,6 @@ Section Cross References
     main.o(i.twi_init) refers to nrf_drv_twi.o(i.nrf_drv_twi_enable) for nrf_drv_twi_enable
     main.o(i.twi_init) refers to main.o(.constdata) for .constdata
     main.o(i.twi_init) refers to main.o(i.twi_handler) for twi_handler
-    main.o(i.update_priority) refers to main.o(i.send_data) for send_data
     main.o(i.update_priority) refers to nrf_log_frontend.o(i.nrf_log_frontend_std_0) for nrf_log_frontend_std_0
     main.o(i.update_priority) refers to main.o(.data) for .data
     main.o(i.update_state) refers to boards.o(i.bsp_board_led_off) for bsp_board_led_off
@@ -2976,38 +2975,38 @@ Image Symbol Table
     i.softdevice_handler_is_enabled          0x00023f94   Section        0  softdevice_handler.o(i.softdevice_handler_is_enabled)
     i.thermostate                            0x00023fa0   Section        0  main.o(i.thermostate)
     i.timer_handler                          0x00024010   Section        0  main.o(i.timer_handler)
-    timer_handler                            0x00024011   Thumb Code    76  main.o(i.timer_handler)
-    i.timer_list_handler                     0x000240c0   Section        0  app_timer.o(i.timer_list_handler)
-    timer_list_handler                       0x000240c1   Thumb Code   134  app_timer.o(i.timer_list_handler)
-    i.timer_list_insert                      0x0002414c   Section        0  app_timer.o(i.timer_list_insert)
-    timer_list_insert                        0x0002414d   Thumb Code    56  app_timer.o(i.timer_list_insert)
-    i.timer_stop_op_schedule                 0x00024188   Section        0  app_timer.o(i.timer_stop_op_schedule)
-    timer_stop_op_schedule                   0x00024189   Thumb Code    68  app_timer.o(i.timer_stop_op_schedule)
-    i.timer_timeouts_check                   0x000241d0   Section        0  app_timer.o(i.timer_timeouts_check)
-    timer_timeouts_check                     0x000241d1   Thumb Code   124  app_timer.o(i.timer_timeouts_check)
-    i.timestamp_process                      0x00024254   Section        0  nrf_log_backend_serial.o(i.timestamp_process)
-    timestamp_process                        0x00024255   Thumb Code    44  nrf_log_backend_serial.o(i.timestamp_process)
-    i.twi_clear_bus                          0x00024288   Section        0  nrf_drv_twi.o(i.twi_clear_bus)
-    twi_clear_bus                            0x00024289   Thumb Code   170  nrf_drv_twi.o(i.twi_clear_bus)
-    i.twi_handler                            0x00024334   Section        0  main.o(i.twi_handler)
-    i.twi_init                               0x00024348   Section        0  main.o(i.twi_init)
-    i.twim_xfer                              0x00024378   Section        0  nrf_drv_twi.o(i.twim_xfer)
-    twim_xfer                                0x00024379   Thumb Code   570  nrf_drv_twi.o(i.twim_xfer)
-    i.tx_byte                                0x000245b8   Section        0  nrf_drv_uart.o(i.tx_byte)
-    tx_byte                                  0x000245b9   Thumb Code    32  nrf_drv_uart.o(i.tx_byte)
-    i.tx_char_add                            0x000245d8   Section        0  ble_nus.o(i.tx_char_add)
-    tx_char_add                              0x000245d9   Thumb Code   160  ble_nus.o(i.tx_char_add)
-    i.tx_done_event                          0x00024678   Section        0  nrf_drv_uart.o(i.tx_done_event)
-    tx_done_event                            0x00024679   Thumb Code    28  nrf_drv_uart.o(i.tx_done_event)
-    i.uart_event_handler                     0x00024694   Section        0  nrf_log_backend_serial.o(i.uart_event_handler)
-    uart_event_handler                       0x00024695   Thumb Code    12  nrf_log_backend_serial.o(i.uart_event_handler)
-    i.uart_irq_handler                       0x000246a4   Section        0  nrf_drv_uart.o(i.uart_irq_handler)
-    uart_irq_handler                         0x000246a5   Thumb Code   286  nrf_drv_uart.o(i.uart_irq_handler)
-    i.uarte_irq_handler                      0x000247c2   Section        0  nrf_drv_uart.o(i.uarte_irq_handler)
-    uarte_irq_handler                        0x000247c3   Thumb Code   240  nrf_drv_uart.o(i.uarte_irq_handler)
-    i.uint16_encode                          0x000248b2   Section        0  ble_advdata.o(i.uint16_encode)
-    uint16_encode                            0x000248b3   Thumb Code    10  ble_advdata.o(i.uint16_encode)
-    i.update_priority                        0x000248bc   Section        0  main.o(i.update_priority)
+    timer_handler                            0x00024011   Thumb Code    86  main.o(i.timer_handler)
+    i.timer_list_handler                     0x000240cc   Section        0  app_timer.o(i.timer_list_handler)
+    timer_list_handler                       0x000240cd   Thumb Code   134  app_timer.o(i.timer_list_handler)
+    i.timer_list_insert                      0x00024158   Section        0  app_timer.o(i.timer_list_insert)
+    timer_list_insert                        0x00024159   Thumb Code    56  app_timer.o(i.timer_list_insert)
+    i.timer_stop_op_schedule                 0x00024194   Section        0  app_timer.o(i.timer_stop_op_schedule)
+    timer_stop_op_schedule                   0x00024195   Thumb Code    68  app_timer.o(i.timer_stop_op_schedule)
+    i.timer_timeouts_check                   0x000241dc   Section        0  app_timer.o(i.timer_timeouts_check)
+    timer_timeouts_check                     0x000241dd   Thumb Code   124  app_timer.o(i.timer_timeouts_check)
+    i.timestamp_process                      0x00024260   Section        0  nrf_log_backend_serial.o(i.timestamp_process)
+    timestamp_process                        0x00024261   Thumb Code    44  nrf_log_backend_serial.o(i.timestamp_process)
+    i.twi_clear_bus                          0x00024294   Section        0  nrf_drv_twi.o(i.twi_clear_bus)
+    twi_clear_bus                            0x00024295   Thumb Code   170  nrf_drv_twi.o(i.twi_clear_bus)
+    i.twi_handler                            0x00024340   Section        0  main.o(i.twi_handler)
+    i.twi_init                               0x00024354   Section        0  main.o(i.twi_init)
+    i.twim_xfer                              0x00024384   Section        0  nrf_drv_twi.o(i.twim_xfer)
+    twim_xfer                                0x00024385   Thumb Code   570  nrf_drv_twi.o(i.twim_xfer)
+    i.tx_byte                                0x000245c4   Section        0  nrf_drv_uart.o(i.tx_byte)
+    tx_byte                                  0x000245c5   Thumb Code    32  nrf_drv_uart.o(i.tx_byte)
+    i.tx_char_add                            0x000245e4   Section        0  ble_nus.o(i.tx_char_add)
+    tx_char_add                              0x000245e5   Thumb Code   160  ble_nus.o(i.tx_char_add)
+    i.tx_done_event                          0x00024684   Section        0  nrf_drv_uart.o(i.tx_done_event)
+    tx_done_event                            0x00024685   Thumb Code    28  nrf_drv_uart.o(i.tx_done_event)
+    i.uart_event_handler                     0x000246a0   Section        0  nrf_log_backend_serial.o(i.uart_event_handler)
+    uart_event_handler                       0x000246a1   Thumb Code    12  nrf_log_backend_serial.o(i.uart_event_handler)
+    i.uart_irq_handler                       0x000246b0   Section        0  nrf_drv_uart.o(i.uart_irq_handler)
+    uart_irq_handler                         0x000246b1   Thumb Code   286  nrf_drv_uart.o(i.uart_irq_handler)
+    i.uarte_irq_handler                      0x000247ce   Section        0  nrf_drv_uart.o(i.uarte_irq_handler)
+    uarte_irq_handler                        0x000247cf   Thumb Code   240  nrf_drv_uart.o(i.uarte_irq_handler)
+    i.uint16_encode                          0x000248be   Section        0  ble_advdata.o(i.uint16_encode)
+    uint16_encode                            0x000248bf   Thumb Code    10  ble_advdata.o(i.uint16_encode)
+    i.update_priority                        0x000248c8   Section        0  main.o(i.update_priority)
     i.update_state                           0x00024948   Section        0  main.o(i.update_state)
     i.update_timeout_handler                 0x00024988   Section        0  ble_conn_params.o(i.update_timeout_handler)
     update_timeout_handler                   0x00024989   Thumb Code    88  ble_conn_params.o(i.update_timeout_handler)
@@ -3410,9 +3409,9 @@ Image Symbol Table
     softdevice_handler_init                  0x00023f31   Thumb Code    92  softdevice_handler.o(i.softdevice_handler_init)
     softdevice_handler_is_enabled            0x00023f95   Thumb Code     6  softdevice_handler.o(i.softdevice_handler_is_enabled)
     thermostate                              0x00023fa1   Thumb Code    58  main.o(i.thermostate)
-    twi_handler                              0x00024335   Thumb Code    14  main.o(i.twi_handler)
-    twi_init                                 0x00024349   Thumb Code    40  main.o(i.twi_init)
-    update_priority                          0x000248bd   Thumb Code    68  main.o(i.update_priority)
+    twi_handler                              0x00024341   Thumb Code    14  main.o(i.twi_handler)
+    twi_init                                 0x00024355   Thumb Code    40  main.o(i.twi_init)
+    update_priority                          0x000248c9   Thumb Code    54  main.o(i.update_priority)
     update_state                             0x00024949   Thumb Code    36  main.o(i.update_state)
     __ctype_table                            0x00024cb4   Data         129  ctype_o.o(.constdata)
     Region$$Table$$Base                      0x00024d8c   Number         0  anon$$obj.o(Region$$Table)
@@ -3705,25 +3704,25 @@ Memory Map of the image
     0x00023f30   0x00000064   Code   RO         4905    i.softdevice_handler_init  softdevice_handler.o
     0x00023f94   0x0000000c   Code   RO         4906    i.softdevice_handler_is_enabled  softdevice_handler.o
     0x00023fa0   0x00000070   Code   RO           22    i.thermostate       main.o
-    0x00024010   0x000000b0   Code   RO           23    i.timer_handler     main.o
-    0x000240c0   0x0000008c   Code   RO         3682    i.timer_list_handler  app_timer.o
-    0x0002414c   0x0000003c   Code   RO         3683    i.timer_list_insert  app_timer.o
-    0x00024188   0x00000048   Code   RO         3684    i.timer_stop_op_schedule  app_timer.o
-    0x000241d0   0x00000084   Code   RO         3685    i.timer_timeouts_check  app_timer.o
-    0x00024254   0x00000034   Code   RO         4520    i.timestamp_process  nrf_log_backend_serial.o
-    0x00024288   0x000000aa   Code   RO         3333    i.twi_clear_bus     nrf_drv_twi.o
-    0x00024332   0x00000002   PAD
-    0x00024334   0x00000014   Code   RO           24    i.twi_handler       main.o
-    0x00024348   0x00000030   Code   RO           25    i.twi_init          main.o
-    0x00024378   0x00000240   Code   RO         3334    i.twim_xfer         nrf_drv_twi.o
-    0x000245b8   0x00000020   Code   RO         3115    i.tx_byte           nrf_drv_uart.o
-    0x000245d8   0x000000a0   Code   RO         2584    i.tx_char_add       ble_nus.o
-    0x00024678   0x0000001c   Code   RO         3116    i.tx_done_event     nrf_drv_uart.o
-    0x00024694   0x00000010   Code   RO         4521    i.uart_event_handler  nrf_log_backend_serial.o
-    0x000246a4   0x0000011e   Code   RO         3117    i.uart_irq_handler  nrf_drv_uart.o
-    0x000247c2   0x000000f0   Code   RO         3118    i.uarte_irq_handler  nrf_drv_uart.o
-    0x000248b2   0x0000000a   Code   RO          743    i.uint16_encode     ble_advdata.o
-    0x000248bc   0x0000008c   Code   RO           26    i.update_priority   main.o
+    0x00024010   0x000000bc   Code   RO           23    i.timer_handler     main.o
+    0x000240cc   0x0000008c   Code   RO         3682    i.timer_list_handler  app_timer.o
+    0x00024158   0x0000003c   Code   RO         3683    i.timer_list_insert  app_timer.o
+    0x00024194   0x00000048   Code   RO         3684    i.timer_stop_op_schedule  app_timer.o
+    0x000241dc   0x00000084   Code   RO         3685    i.timer_timeouts_check  app_timer.o
+    0x00024260   0x00000034   Code   RO         4520    i.timestamp_process  nrf_log_backend_serial.o
+    0x00024294   0x000000aa   Code   RO         3333    i.twi_clear_bus     nrf_drv_twi.o
+    0x0002433e   0x00000002   PAD
+    0x00024340   0x00000014   Code   RO           24    i.twi_handler       main.o
+    0x00024354   0x00000030   Code   RO           25    i.twi_init          main.o
+    0x00024384   0x00000240   Code   RO         3334    i.twim_xfer         nrf_drv_twi.o
+    0x000245c4   0x00000020   Code   RO         3115    i.tx_byte           nrf_drv_uart.o
+    0x000245e4   0x000000a0   Code   RO         2584    i.tx_char_add       ble_nus.o
+    0x00024684   0x0000001c   Code   RO         3116    i.tx_done_event     nrf_drv_uart.o
+    0x000246a0   0x00000010   Code   RO         4521    i.uart_event_handler  nrf_log_backend_serial.o
+    0x000246b0   0x0000011e   Code   RO         3117    i.uart_irq_handler  nrf_drv_uart.o
+    0x000247ce   0x000000f0   Code   RO         3118    i.uarte_irq_handler  nrf_drv_uart.o
+    0x000248be   0x0000000a   Code   RO          743    i.uint16_encode     ble_advdata.o
+    0x000248c8   0x00000080   Code   RO           26    i.update_priority   main.o
     0x00024948   0x00000040   Code   RO           27    i.update_state      main.o
     0x00024988   0x00000060   Code   RO          906    i.update_timeout_handler  ble_conn_params.o
     0x000249e8   0x00000030   Code   RO         3686    i.user_op_alloc     app_timer.o
@@ -3821,7 +3820,7 @@ Image component sizes
        252         10          0          8          0       4669   bsp_btn_ble.o
       2032        210         20         40        284      25927   fds.o
        568         42          0          2        104       9078   fstorage.o
-      3396       1398         44         17        316     141794   main.o
+      3396       1402         44         17        316     141738   main.o
        288         22          0          0         20      12204   nrf_drv_clock.o
         56          0          0          0          0      27507   nrf_drv_common.o
       1178         84          4          0         88      27480   nrf_drv_gpiote.o
@@ -3834,7 +3833,7 @@ Image component sizes
        668         58          0          4          0       2587   system_nrf52.o
 
     ----------------------------------------------------------------------
-     20924       2668       1364        236      10772     608803   Object Totals
+     20924       2672       1364        236      10772     608747   Object Totals
          0          0         32          0          0          0   (incl. Generated)
         44          0          3          6          1          0   (incl. Padding)
 
@@ -3882,9 +3881,9 @@ Image component sizes
 
       Code (inc. data)   RO Data    RW Data    ZI Data      Debug   
 
-     22480       2736       1500        236      10772     586447   Grand Totals
-     22480       2736       1500        236      10772     586447   ELF Image Totals
-     22480       2736       1500        236          0          0   ROM Totals
+     22480       2740       1500        236      10772     586391   Grand Totals
+     22480       2740       1500        236      10772     586391   ELF Image Totals
+     22480       2740       1500        236          0          0   ROM Totals
 
 ==============================================================================
 

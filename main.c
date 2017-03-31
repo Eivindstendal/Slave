@@ -876,7 +876,7 @@ bool send_ack(void)
 	}
 	else
 		{
-			NRF_LOG_INFO("	ack feiled to send n\r",err_code);
+			NRF_LOG_INFO("	ack failed to send n\r",err_code);
 			return false;
 		}
 }
@@ -891,7 +891,6 @@ void update_priority(void)
 			if(NORMAL_PRIORITY != slave_data.priority)
 			{
 				slave_data.priority = NORMAL_PRIORITY;
-				send_data();
 				NRF_LOG_INFO("	New priority: NORMAL\r\n")
 			}
 			
@@ -901,7 +900,6 @@ void update_priority(void)
 			if(LOW_PRIORITY != slave_data.priority)
 			{
 				slave_data.priority = LOW_PRIORITY;
-				send_data();
 				NRF_LOG_INFO("	New priority: LOW\r\n")
 			}
 				
@@ -1023,6 +1021,9 @@ static void timer_handler(void * p_context)
 			NRF_LOG_INFO("	New temp: %d \r\n",m_sample);
 			slave_data.current_temp = m_sample;
 			update_priority();
+			//Check if slave has been in contact with central 
+			if(255!= slave_data.address)
+				send_data();
 		}
 }
 

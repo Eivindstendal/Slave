@@ -3,7 +3,7 @@
 <title>Static Call Graph - [.\_build\nrf52832_xxaa.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image .\_build\nrf52832_xxaa.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060183: Last Updated: Fri Mar 31 13:46:06 2017
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060183: Last Updated: Fri Mar 31 15:05:28 2017
 <BR><P>
 <H3>Maximum Stack Usage =        448 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -1182,8 +1182,7 @@ Global Symbols
 <LI><a href="#[11d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ble_nus_string_send
 <LI><a href="#[86]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;app_timer_start
 </UL>
-<BR>[Called By]<UL><LI><a href="#[120]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;update_priority
-<LI><a href="#[3b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;timer_handler
+<BR>[Called By]<UL><LI><a href="#[3b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;timer_handler
 <LI><a href="#[3c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ack_timer_handler
 </UL>
 
@@ -1254,11 +1253,10 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[2f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[120]"></a>update_priority</STRONG> (Thumb, 68 bytes, Stack size 8 bytes, main.o(i.update_priority))
-<BR><BR>[Stack]<UL><LI>Max Depth = 92<LI>Call Chain = update_priority &rArr; send_data &rArr; nrf_log_frontend_std_1 &rArr; buf_prealloc &rArr; app_util_critical_region_enter
+<P><STRONG><a name="[120]"></a>update_priority</STRONG> (Thumb, 54 bytes, Stack size 0 bytes, main.o(i.update_priority))
+<BR><BR>[Stack]<UL><LI>Max Depth = 68<LI>Call Chain = update_priority &rArr; nrf_log_frontend_std_0 &rArr; buf_prealloc &rArr; app_util_critical_region_enter
 </UL>
 <BR>[Calls]<UL><LI><a href="#[7e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_log_frontend_std_0
-<LI><a href="#[67]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;send_data
 </UL>
 <BR>[Called By]<UL><LI><a href="#[3b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;timer_handler
 </UL>
@@ -1375,8 +1373,8 @@ Local Symbols
 <LI><a href="#[33]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;on_adv_evt
 </UL>
 
-<P><STRONG><a name="[3b]"></a>timer_handler</STRONG> (Thumb, 76 bytes, Stack size 16 bytes, main.o(i.timer_handler))
-<BR><BR>[Stack]<UL><LI>Max Depth = 108<LI>Call Chain = timer_handler &rArr; update_priority &rArr; send_data &rArr; nrf_log_frontend_std_1 &rArr; buf_prealloc &rArr; app_util_critical_region_enter
+<P><STRONG><a name="[3b]"></a>timer_handler</STRONG> (Thumb, 86 bytes, Stack size 16 bytes, main.o(i.timer_handler))
+<BR><BR>[Stack]<UL><LI>Max Depth = 100<LI>Call Chain = timer_handler &rArr; send_data &rArr; nrf_log_frontend_std_1 &rArr; buf_prealloc &rArr; app_util_critical_region_enter
 </UL>
 <BR>[Calls]<UL><LI><a href="#[10b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_log_frontend_std_1
 <LI><a href="#[7e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nrf_log_frontend_std_0
