@@ -134,8 +134,8 @@ typedef struct
 	uint8_t address;										/**< Address given by central */
 	uint8_t ack;										/**< etc */		
 	uint8_t state;										/**< etc */
-	uint8_t wanted_temp;												/**< Integer part of extern temp sensor on NRF52 */
-	uint8_t current_temp;										/**< Fractional part of extern temp semsor on NRF52 */
+	int8_t wanted_temp;												/**< Integer part of extern temp sensor on NRF52 */
+	int8_t current_temp;										/**< Fractional part of extern temp semsor on NRF52 */
 	uint8_t priority;										/**< The priority of the slave device */
 }my_data;
 	
@@ -209,6 +209,21 @@ static void gap_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+/**@brief Function to print data to slaves
+ * 
+ *  
+ */
+void print_slave_data(void)
+{	
+		NRF_LOG_INFO("	Type:				%c\n\r",slave_data.type);
+		NRF_LOG_INFO("	Address:			%d\n\r",slave_data.address);
+		NRF_LOG_INFO("	ack:				%d\n\r",slave_data.ack);
+		NRF_LOG_INFO("	state:				%d\n\r",slave_data.state);
+		NRF_LOG_INFO("	Wanted_temp:			%d\n\r",slave_data.wanted_temp);
+		NRF_LOG_INFO("	Current_temp:			%d\n\r",slave_data.current_temp);
+		NRF_LOG_INFO("	Priority:			%d\n\n\r",slave_data.priority);
+ }
+
 
 /**@brief Function for handling the data from the Nordic UART Service.
  *
@@ -220,8 +235,9 @@ static void gap_params_init(void)
  */
 /**@snippet [Handling the data received over BLE] */
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
-{
-						
+	{	
+					if('A' == p_data[0] || 'a' == p_data[0])
+					{
 						slave_data.address = p_data[1];
 						slave_data.state = p_data[3]; 
 						slave_data.wanted_temp = p_data[4];
@@ -234,6 +250,7 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 							
 						}else if(1== p_data[2])
 						{
+							NRF_LOG_INFO("	ack recieved \r\n");
 							app_timer_stop(ack_timer);
 							waiting_ack = false;
 						}
@@ -246,13 +263,17 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 						}
 						
 						
-						NRF_LOG_INFO("	Type:				%c\n\r",p_data[0]);
+						NRF_LOG_INFO("	Type Recieved:			%c\n\r",p_data[0]);
 						NRF_LOG_INFO("	Address recieved:		%d\n\r",p_data[1]);
 						NRF_LOG_INFO("	ack recieved:			%d\n\r",p_data[2]);
-						NRF_LOG_INFO("	state:				%d\n\r",p_data[3]);
-						NRF_LOG_INFO("	Wanted temp:			%d\n\r",p_data[4]);
-						NRF_LOG_INFO("	Current_temp:			%d\n\r",p_data[5]);
-						NRF_LOG_INFO("	priority:			%d\n\n\r",p_data[6]);			
+						NRF_LOG_INFO("	state recieved:			%d\n\r",p_data[3]);
+						NRF_LOG_INFO("	Wanted temp recieved:		%d\n\r",p_data[4]);
+						NRF_LOG_INFO("	Current_temp recieved:		%d\n\r",p_data[5]);
+						NRF_LOG_INFO("	priority recieved:		%d\n\n\r",p_data[6]);		
+					}else
+					{
+						NRF_LOG_INFO("	Recieved data from unknown source %c \n\n\r",p_data[0]);
+					}
 }
 
 
@@ -734,9 +755,15 @@ static void buttons_leds_init(bool * p_erase_bonds)
 void update_state()
 {
 	if(100 == slave_data.state)
+	{
 		bsp_board_led_on(2);
+		NRF_LOG_INFO("	STATE OFF ");
+	}
 	else
+	{
 		bsp_board_led_off(2);
+		NRF_LOG_INFO("	STATE OFF ");
+	}
 }
 
 
@@ -745,9 +772,16 @@ void update_state()
 void thermostate(void)
 {
 	if(slave_data.wanted_temp > slave_data.current_temp && 100 == slave_data.state)
-		bsp_board_led_on(2);
+	{
+		NRF_LOG_INFO("	OVEN ON\r\n ");
+		bsp_board_led_on(3);
+	}
 	else
-		bsp_board_led_off(2);
+	{
+		NRF_LOG_INFO("	OVEN OFF\r\n ");
+		bsp_board_led_off(3);
+	}
+		
 
 }
 
@@ -854,21 +888,23 @@ void update_priority(void)
 {
 		if((slave_data.current_temp<slave_data.wanted_temp)&&(slave_data.wanted_temp - slave_data.current_temp)> 2 )
 		{
-				//NRF_LOG_INFO("	New priority: HIGH\r\n");
-			if(LOW_PRIORITY != slave_data.priority)
-			{
-				send_data();
-				NRF_LOG_INFO("	New priority: LOW\r\n")
-			}
-				slave_data.priority = LOW_PRIORITY;
-		}else
-		{
 			if(NORMAL_PRIORITY != slave_data.priority)
 			{
+				slave_data.priority = NORMAL_PRIORITY;
 				send_data();
 				NRF_LOG_INFO("	New priority: NORMAL\r\n")
 			}
-			slave_data.priority = LOW_PRIORITY;
+			
+		}else
+		{
+			
+			if(LOW_PRIORITY != slave_data.priority)
+			{
+				slave_data.priority = LOW_PRIORITY;
+				send_data();
+				NRF_LOG_INFO("	New priority: LOW\r\n")
+			}
+				
 		}
 			
 			
@@ -905,14 +941,8 @@ void LM75B_set_mode(void)
  */
 __STATIC_INLINE void data_handler(uint8_t temp)
 {
-		if(temp != slave_data.current_temp)
-		{
-			
-			slave_data.current_temp = temp;
-			update_priority();
-			thermostate();
-			
-		}
+		//NRF_LOG_INFO("KJØRER DENNE_2????");
+		
 		
 }
 
@@ -985,7 +1015,15 @@ static void timer_handler(void * p_context)
 			
 		
 		NRF_LOG_INFO("	read_sensor_data: %i \r\n",m_sample);
+		print_slave_data();
+		thermostate();
 		
+		if(m_sample != slave_data.current_temp)
+		{
+			NRF_LOG_INFO("	New temp: %d \r\n",m_sample);
+			slave_data.current_temp = m_sample;
+			update_priority();
+		}
 }
 
 /**@brief  Timeout handler for the repeated timer
@@ -1052,7 +1090,7 @@ int main(void)
     conn_params_init();
 		init_data();
 		update_state();
-	
+		thermostate();
 		
     NRF_LOG_INFO("	UART Start!!!\r\n");
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
