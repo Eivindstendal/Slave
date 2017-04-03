@@ -42,6 +42,7 @@
 #include "nrf_drv_clock.h"
 #include "nrf_temp.h"
 #include "nrf_drv_twi.h"
+#include "nrf_drv_gpiote.h"
 
 
 #define NRF_LOG_MODULE_NAME "APP"
@@ -66,11 +67,11 @@
 #define CENTRAL_LINK_COUNT              0                                           /**< Number of central links used by the application. When changing this number remember to adjust the RAM settings*/
 #define PERIPHERAL_LINK_COUNT           1                                           /**< Number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
 
-#define DEVICE_NAME                     "Nordic_UART"                               /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "7dk29kshnsdc"                               /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 #define SLAVE_TYPE						'B'																										/**< The type slave, capital letter means it has a temp sensor*/ 
 #define NORMAL_PRIORITY					0x0F																									/**< The highest priority for the slave*/
-#define LOW_PRIORITY					0x19																									/**< The start up priority*/
+#define LOW_PRIORITY						0x19																									/**< The start up priority*/
 
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
@@ -105,6 +106,11 @@
 #define LM75B_REG_CONF      0x01U
 #define LM75B_REG_THYST     0x02U
 #define LM75B_REG_TOS       0x03U
+
+#define RELAY_GPIO_OUTPUT   25																											/**< Output pin for relay */
+
+#define LED_STATE 		      2																												/**< STATE led, LED3 on board */
+#define LED_RELAY     			3																												/**< Relay led, LED4 on board */				
 
 /* Mode for LM75B. */
 #define NORMAL_MODE 0U
@@ -161,7 +167,7 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 /**@brief Names which the central applications will scan for, and which will be advertised by the peripherals.
  *  if these are set to empty strings, the UUIDs defined below will be used
  */
-//static const char m_target_periph_name[] = "";          /**< If you want to connect to a central using a given advertising name, type its name here. */
+static const char m_target_periph_name[] = "";          /**< If you want to connect to a central using a given advertising name, type its name here. */
 static bool  is_connect_per_addr = true;               /**< If you want to connect to a cental with a given address, set this to true and put the correct address in the variable below. */
 static const ble_gap_addr_t m_target_central_addr =
 {
@@ -173,11 +179,6 @@ static const ble_gap_addr_t m_target_central_addr =
     .addr_type = BLE_GAP_ADDR_TYPE_RANDOM_STATIC,
     .addr      = {0x40, 0xb8, 0x37, 0x64, 0x9c, 0x4a}
 };
-
-
-
- 
-
 
 
 /**@brief Function for the GAP initialization.
@@ -217,7 +218,7 @@ void print_slave_data(void)
 {	
 		NRF_LOG_INFO("	Type:				%c\n\r",slave_data.type);
 		NRF_LOG_INFO("	Address:			%d\n\r",slave_data.address);
-		NRF_LOG_INFO("	ack:				%d\n\r",slave_data.ack);
+		//NRF_LOG_INFO("	ack:				%d\n\r",slave_data.ack);
 		NRF_LOG_INFO("	state:				%d\n\r",slave_data.state);
 		NRF_LOG_INFO("	Wanted_temp:			%d\n\r",slave_data.wanted_temp);
 		NRF_LOG_INFO("	Current_temp:			%d\n\r",slave_data.current_temp);
@@ -518,9 +519,14 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 					}break; // BLE_GAP_EVT_ADV_REPORT
 									
         case BLE_GAP_EVT_DISCONNECTED:
+					NRF_LOG_INFO("HEIIIIIII  0\r\n");
             err_code = bsp_indication_set(BSP_INDICATE_IDLE);
             APP_ERROR_CHECK(err_code);
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
+				
+						err_code = ble_advertising_start(BLE_ADV_MODE_SLOW);
+						APP_ERROR_CHECK(err_code);
+						
             break; // BLE_GAP_EVT_DISCONNECTED
 
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
@@ -536,6 +542,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             break; // BLE_GATTS_EVT_SYS_ATTR_MISSING
 
         case BLE_GATTC_EVT_TIMEOUT:
+					NRF_LOG_INFO("HEIIIIIII  1\r\n");
             // Disconnect on GATT Client timeout event.
             err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gattc_evt.conn_handle,
                                              BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
@@ -543,6 +550,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             break; // BLE_GATTC_EVT_TIMEOUT
 
         case BLE_GATTS_EVT_TIMEOUT:
+					NRF_LOG_INFO("HEIIIIIII  2 \r\n");
             // Disconnect on GATT Server timeout event.
             err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gatts_evt.conn_handle,
                                              BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
@@ -670,12 +678,15 @@ void bsp_event_handler(bsp_event_t event)
         case BSP_EVENT_DISCONNECT:
             err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
 			
-			NRF_LOG_INFO("	Dissconnected_ bps_Event");
+						NRF_LOG_INFO("	disconnected_bps_Event");
 			
             if (err_code != NRF_ERROR_INVALID_STATE)
             {
                 APP_ERROR_CHECK(err_code);
             }
+						
+						err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
+						APP_ERROR_CHECK(err_code);
             break;
 
         case BSP_EVENT_WHITELIST_OFF:
@@ -688,7 +699,10 @@ void bsp_event_handler(bsp_event_t event)
                 }
             }
             break;
-
+				case BSP_EVENT_KEY_3:
+            err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
+						APP_ERROR_CHECK(err_code);
+            break;
         default:
             break;
     }
@@ -756,12 +770,12 @@ void update_state()
 {
 	if(100 == slave_data.state)
 	{
-		bsp_board_led_on(2);
-		NRF_LOG_INFO("	STATE OFF ");
+		bsp_board_led_on(LED_STATE);
+		NRF_LOG_INFO("	STATE ON ");
 	}
 	else
 	{
-		bsp_board_led_off(2);
+		bsp_board_led_off(LED_STATE);
 		NRF_LOG_INFO("	STATE OFF ");
 	}
 }
@@ -774,15 +788,15 @@ void thermostate(void)
 	if(slave_data.wanted_temp > slave_data.current_temp && 100 == slave_data.state)
 	{
 		NRF_LOG_INFO("	OVEN ON\r\n ");
-		bsp_board_led_on(3);
+		bsp_board_led_on(LED_RELAY);
+		nrf_gpio_pin_set(RELAY_GPIO_OUTPUT);
 	}
 	else
 	{
 		NRF_LOG_INFO("	OVEN OFF\r\n ");
-		bsp_board_led_off(3);
+		bsp_board_led_off(LED_RELAY);
+		nrf_gpio_pin_clear(RELAY_GPIO_OUTPUT);
 	}
-		
-
 }
 
 
@@ -903,10 +917,7 @@ void update_priority(void)
 				NRF_LOG_INFO("	New priority: LOW\r\n")
 			}
 				
-		}
-			
-			
-			
+		}			
 }
 
 
@@ -943,7 +954,6 @@ __STATIC_INLINE void data_handler(uint8_t temp)
 		
 		
 }
-
 
 /**
  * @brief TWI events handler.
@@ -1005,13 +1015,13 @@ static void read_sensor_data()
  */
 static void timer_handler(void * p_context)
 {	
+	
 		if(0xFF == slave_data.address)
 		{
-			NRF_LOG_INFO("	What is my addr ? \r\n");
+			NRF_LOG_INFO("	What is my address ? \r\n");
 			send_data();
 		}
 			
-		
 		NRF_LOG_INFO("	read_sensor_data: %i \r\n",m_sample);
 		print_slave_data();
 		thermostate();
@@ -1021,10 +1031,8 @@ static void timer_handler(void * p_context)
 			NRF_LOG_INFO("	New temp: %d \r\n",m_sample);
 			slave_data.current_temp = m_sample;
 			update_priority();
-			//Check if slave has been in contact with central 
-			if(255!= slave_data.address)
-				send_data();
-		}
+			send_data();
+		}			
 }
 
 /**@brief  Timeout handler for the repeated timer
@@ -1032,8 +1040,8 @@ static void timer_handler(void * p_context)
 static void ack_timer_handler(void * p_context)
 {	
 		send_data();
-	
 }
+
 
 /**@brief Create timers.
  */
@@ -1075,14 +1083,18 @@ int main(void)
     //uart_init();
     buttons_leds_init(&erase_bonds);
 	
-	bsp_board_leds_init();
-	err_code = NRF_LOG_INIT(NULL);
-	APP_ERROR_CHECK(err_code);
+		bsp_board_leds_init();
+		err_code = NRF_LOG_INIT(NULL);
+		APP_ERROR_CHECK(err_code);
 	
 	if (erase_bonds == true)
     {
         NRF_LOG_DEBUG("Bonds erased!\r\n");
     }
+		nrf_drv_gpiote_init();
+		APP_ERROR_CHECK(err_code);
+		NRF_LOG_INFO("GPIO_DRIVER_INIT: %i \r\n",err_code);
+		nrf_gpio_pin_dir_set(RELAY_GPIO_OUTPUT,NRF_GPIO_PIN_DIR_OUTPUT);					//GPIO_PIN_CNF_DIR_Output
 		
     ble_stack_init();
     gap_params_init();
@@ -1092,6 +1104,8 @@ int main(void)
 		init_data();
 		update_state();
 		thermostate();
+		
+		
 		
     NRF_LOG_INFO("	UART Start!!!\r\n");
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
