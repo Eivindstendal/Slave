@@ -164,22 +164,6 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 }
 
 
-/**@brief Names which the central applications will scan for, and which will be advertised by the peripherals.
- *  if these are set to empty strings, the UUIDs defined below will be used
- */
-static const char m_target_periph_name[] = "";          /**< If you want to connect to a central using a given advertising name, type its name here. */
-static bool  is_connect_per_addr = true;               /**< If you want to connect to a cental with a given address, set this to true and put the correct address in the variable below. */
-static const ble_gap_addr_t m_target_central_addr =
-{
-    /* Possible values for addr_type:
-       BLE_GAP_ADDR_TYPE_PUBLIC,
-       BLE_GAP_ADDR_TYPE_RANDOM_STATIC,
-       BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE,
-       BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE. */
-    .addr_type = BLE_GAP_ADDR_TYPE_RANDOM_STATIC,
-    .addr      = {0x40, 0xb8, 0x37, 0x64, 0x9c, 0x4a}
-};
-
 
 /**@brief Function for the GAP initialization.
  *
@@ -220,8 +204,8 @@ void print_slave_data(void)
 		NRF_LOG_INFO("	Address:			%d\n\r",slave_data.address);
 		//NRF_LOG_INFO("	ack:				%d\n\r",slave_data.ack);
 		NRF_LOG_INFO("	state:				%d\n\r",slave_data.state);
-		NRF_LOG_INFO("	Wanted_temp:			%d\n\r",slave_data.wanted_temp);
-		NRF_LOG_INFO("	Current_temp:			%d\n\r",slave_data.current_temp);
+		NRF_LOG_INFO("	Wanted_temp:			%i\n\r",slave_data.wanted_temp);
+		NRF_LOG_INFO("	Current_temp:			%i\n\r",slave_data.current_temp);
 		NRF_LOG_INFO("	Priority:			%d\n\n\r",slave_data.priority);
  }
 
@@ -268,8 +252,7 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 						NRF_LOG_INFO("	Address recieved:		%d\n\r",p_data[1]);
 						NRF_LOG_INFO("	ack recieved:			%d\n\r",p_data[2]);
 						NRF_LOG_INFO("	state recieved:			%d\n\r",p_data[3]);
-						NRF_LOG_INFO("	Wanted temp recieved:		%d\n\r",p_data[4]);
-						NRF_LOG_INFO("	Current_temp recieved:		%d\n\r",p_data[5]);
+						NRF_LOG_INFO("	Wanted temp recieved:		%i\n\r",slave_data.wanted_temp);
 						NRF_LOG_INFO("	priority recieved:		%d\n\n\r",p_data[6]);		
 					}else
 					{
@@ -372,26 +355,6 @@ static void sleep_mode_enter(void)
 }
 
 
-/**@brief Function for searching a given addr in the advertisement packets.
- *
- * @details Use this function to parse received advertising data and to find a given
- * addr in them.
- *
- * @param[in]   p_adv_report   advertising data to parse.
- * @param[in]   p_addr   name to search.
- * @return   true if the given name was found, false otherwise.
- */
-static bool find_peer_addr(const ble_gap_evt_adv_report_t *p_adv_report, const ble_gap_addr_t * p_addr)
-{
-    if (p_addr->addr_type == p_adv_report->peer_addr.addr_type)
-    {
-        if (memcmp(p_addr->addr, p_adv_report->peer_addr.addr, sizeof(p_adv_report->peer_addr.addr)) == 0)
-        {
-            return true;
-        }
-    }
-    return false;
-}
 
 
 /**@brief Function for handling advertising events.
@@ -403,7 +366,6 @@ static bool find_peer_addr(const ble_gap_evt_adv_report_t *p_adv_report, const b
 static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 {
     uint32_t err_code;
-		//ble_gap_irk_t p_gap_irks;
 	
     switch (ble_adv_evt)
     {
@@ -423,60 +385,10 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
             sleep_mode_enter();
             break;
 				
-				case BLE_ADV_EVT_FAST_WHITELIST:
-            NRF_LOG_INFO("BLE_ADV_EVT_FAST_WHITELIST\r\n");
-					NRF_LOG_INFO("BLE_ADV_EVT_FAST_WHITELIST\r\n");
-            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING_WHITELIST);
-            APP_ERROR_CHECK(err_code);
-						break; 
-			
-				case BLE_ADV_EVT_SLOW_WHITELIST:
-            NRF_LOG_INFO("BLE_ADV_EVT_SLOW_WHITELIST\r\n");
-					NRF_LOG_INFO("BLE_ADV_EVT_SLOW_WHITELIST\r\n");
-            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING_WHITELIST);
-            APP_ERROR_CHECK(err_code);
-            break; 
-				
 				case BLE_ADV_EVT_PEER_ADDR_REQUEST:
 						NRF_LOG_INFO("ADDR_request\n\r");
-						//pm_peer_data_bonding_t peer_bonding_data;
 
-            // Only Give peer address if we have a handle to the bonded peer.
-            /* if (m_peer_id != PM_PEER_ID_INVALID)
-            {
-                err_code = pm_peer_data_bonding_load(m_peer_id, &peer_bonding_data);
-                if (err_code != NRF_ERROR_NOT_FOUND)
-                {
-                    APP_ERROR_CHECK(err_code);
-
-                    ble_gap_addr_t * p_peer_addr = &(peer_bonding_data.peer_ble_id.id_addr_info);
-                    err_code = ble_advertising_peer_addr_reply(p_peer_addr);
-                    APP_ERROR_CHECK(err_code);
-                }
-            } */
 						break;
-				
-							
-				case BLE_ADV_EVT_WHITELIST_REQUEST:
-							//NRF_LOG_INFO("Whitelist_req\n\r");
-//							ble_gap_addr_t whitelist_addrs[BLE_GAP_WHITELIST_ADDR_MAX_COUNT_EDITED];
-//							ble_gap_irk_t  whitelist_irks[BLE_GAP_WHITELIST_ADDR_MAX_COUNT_EDITED];
-//							uint32_t       addr_cnt = BLE_GAP_WHITELIST_ADDR_MAX_COUNT_EDITED;
-//							uint32_t       irk_cnt  = BLE_GAP_WHITELIST_ADDR_MAX_COUNT_EDITED;
-
-//							err_code = pm_whitelist_get(whitelist_addrs, &addr_cnt,
-//                                        whitelist_irks,  &irk_cnt);
-//							APP_ERROR_CHECK(err_code);
-//							NRF_LOG_DEBUG("pm_whitelist_get returns %d addr in whitelist and %d irk whitelist\r\n",
-//                           addr_cnt,
-//                           irk_cnt);
-
-//							// Apply the whitelist.
-//							err_code = ble_advertising_whitelist_reply(whitelist_addrs, addr_cnt,
-//                                                       whitelist_irks,  irk_cnt);
-//							APP_ERROR_CHECK(err_code);				
-						
-					break;
 				
         default:
             break;
@@ -492,13 +404,13 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 static void on_ble_evt(ble_evt_t * p_ble_evt)
 {
     uint32_t err_code;
-		const ble_gap_evt_t   * p_gap_evt = &p_ble_evt->evt.gap_evt;
+
 	
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
 		
-			NRF_LOG_INFO("	connected gap conn \n\r ");
+						NRF_LOG_INFO("	BLE_GAP_EVT_CONNECTED \n\r ");
             err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
             APP_ERROR_CHECK(err_code);
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
@@ -506,15 +418,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 				
 				case BLE_GAP_EVT_ADV_REPORT:
 				{ 
-					//bool do_connect = false;
-            if (is_connect_per_addr)
-            {
-                if (find_peer_addr(&p_gap_evt->params.adv_report, &m_target_central_addr))
-                {
-                    NRF_LOG_INFO("Address match send connect_request.\r\n");
-                    //do_connect = true;
-                }
-            }
+            
                     
 					}break; // BLE_GAP_EVT_ADV_REPORT
 									
@@ -617,7 +521,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 {
     ble_conn_params_on_ble_evt(p_ble_evt);
-	//pm_on_ble_evt(p_ble_evt);
     ble_nus_on_ble_evt(&m_nus, p_ble_evt);
     on_ble_evt(p_ble_evt);
     ble_advertising_on_ble_evt(p_ble_evt);
@@ -710,7 +613,7 @@ void bsp_event_handler(bsp_event_t event)
 
 
 
-/**@snippet [UART Initialization] */
+
 
 
 /**@brief Function for initializing the Advertising functionality.
@@ -1080,7 +983,6 @@ int main(void)
 																			NULL);
 		twi_init();		
 	  LM75B_set_mode();
-    //uart_init();
     buttons_leds_init(&erase_bonds);
 	
 		bsp_board_leds_init();
