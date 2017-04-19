@@ -17,8 +17,8 @@
  * @ingroup  ble_sdk_app_nus_eval
  * @brief    UART over BLE application main file.
  *
- * This file contains the source code for a sample application that uses the Nordic UART service.
- * This application uses the @ref srvlib_conn_params module.
+ * This file contains the source code for a application that uses the Nordic UART service and FreeRTROS.
+ *.
  */
 
 #include <stdint.h>
@@ -107,7 +107,7 @@
 #define LM75B_REG_THYST     0x02U
 #define LM75B_REG_TOS       0x03U
 
-#define RELAY_GPIO_OUTPUT   25																											/**< Output pin for relay */
+#define RELAY_GPIO_OUTPUT   11																											/**< Output pin for relay */
 
 #define LED_STATE 		      2																												/**< STATE led, LED3 on board */
 #define LED_RELAY     			3																												/**< Relay led, LED4 on board */				
@@ -210,6 +210,31 @@ void print_slave_data(void)
  }
 
 
+/**@brief Application handler
+ */
+void update_priority(void)
+{
+		if((slave_data.current_temp<slave_data.wanted_temp)&&(slave_data.wanted_temp - slave_data.current_temp)> 2 )
+		{
+			if(NORMAL_PRIORITY != slave_data.priority)
+			{
+				slave_data.priority = NORMAL_PRIORITY;
+				NRF_LOG_INFO("	New priority: NORMAL\r\n")
+			}
+			
+		}else
+		{
+			
+			if(LOW_PRIORITY != slave_data.priority)
+			{
+				slave_data.priority = LOW_PRIORITY;
+				NRF_LOG_INFO("	New priority: LOW\r\n\n")
+			}
+				
+		}			
+}
+
+
 /**@brief Function for handling the data from the Nordic UART Service.
  *
  * @details This function will store the data received from the Nordic UART BLE Service.
@@ -235,7 +260,7 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 							
 						}else if(1== p_data[2])
 						{
-							NRF_LOG_INFO("	ack recieved \r\n");
+							NRF_LOG_INFO("	ack recieved \r\n\n");
 							app_timer_stop(ack_timer);
 							waiting_ack = false;
 						}
@@ -246,14 +271,17 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 							slave_data.state = p_data[3]; 
 							update_state();
 						}
-						
+						if(p_data[4]!= slave_data.wanted_temp)
+						{
+							update_priority();
+						}
 						
 						NRF_LOG_INFO("	Type Recieved:			%c\n\r",p_data[0]);
 						NRF_LOG_INFO("	Address recieved:		%d\n\r",p_data[1]);
 						NRF_LOG_INFO("	ack recieved:			%d\n\r",p_data[2]);
 						NRF_LOG_INFO("	state recieved:			%d\n\r",p_data[3]);
-						NRF_LOG_INFO("	Wanted temp recieved:		%i\n\r",slave_data.wanted_temp);
-						NRF_LOG_INFO("	priority recieved:		%d\n\n\r",p_data[6]);		
+						NRF_LOG_INFO("	Wanted temp recieved:		%i\n\n\r",slave_data.wanted_temp);
+						//NRF_LOG_INFO("	priority recieved:		%d\n\n\r",p_data[6]);		
 					}else
 					{
 						NRF_LOG_INFO("	Recieved data from unknown source %c \n\n\r",p_data[0]);
@@ -423,7 +451,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 					}break; // BLE_GAP_EVT_ADV_REPORT
 									
         case BLE_GAP_EVT_DISCONNECTED:
-					NRF_LOG_INFO("HEIIIIIII  0\r\n");
             err_code = bsp_indication_set(BSP_INDICATE_IDLE);
             APP_ERROR_CHECK(err_code);
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
@@ -733,14 +760,14 @@ void init_data(void)
 bool send_data(void)
 {
 	
-	uint8_t data[ELEMENTS_IN_MY_DATA_STRUCT];
+	uint8_t data[7];
 	uint32_t err_code;
 	
 	data[0] = slave_data.type;
 	data[1] = slave_data.address;
 	data[2] = 0;
 	data[3] = slave_data.state;
-	data[4] = slave_data.wanted_temp;
+	//data[4] = slave_data.wanted_temp;
 	data[5] = slave_data.current_temp;
 	data[6] = slave_data.priority;
 	
@@ -779,7 +806,7 @@ bool send_ack(void)
 	data[1] = slave_data.address;
 	data[2] = 1;
 	data[3] = slave_data.state;
-	data[4] = slave_data.wanted_temp;
+	//data[4] = slave_data.wanted_temp;
 	data[5] = slave_data.current_temp;
 	data[6] = slave_data.priority;
 	
@@ -787,41 +814,18 @@ bool send_ack(void)
 	
 	if(err_code == NRF_SUCCESS )
 	{
-			NRF_LOG_INFO("	ack sent \n\r");
+			NRF_LOG_INFO("	ack sent \n\n\r");
 		
 			return true;
 	}
 	else
 		{
-			NRF_LOG_INFO("	ack failed to send n\r",err_code);
+			NRF_LOG_INFO("	ack failed to send \n\n\r",err_code);
 			return false;
 		}
 }
 
 
-/**@brief Application handler
- */
-void update_priority(void)
-{
-		if((slave_data.current_temp<slave_data.wanted_temp)&&(slave_data.wanted_temp - slave_data.current_temp)> 2 )
-		{
-			if(NORMAL_PRIORITY != slave_data.priority)
-			{
-				slave_data.priority = NORMAL_PRIORITY;
-				NRF_LOG_INFO("	New priority: NORMAL\r\n")
-			}
-			
-		}else
-		{
-			
-			if(LOW_PRIORITY != slave_data.priority)
-			{
-				slave_data.priority = LOW_PRIORITY;
-				NRF_LOG_INFO("	New priority: LOW\r\n")
-			}
-				
-		}			
-}
 
 
 /**
