@@ -69,12 +69,12 @@
 
 #define DEVICE_NAME                     "7dk29kshnsdc"                               /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
-#define SLAVE_TYPE						'B'																										/**< The type slave, capital letter means it has a temp sensor*/ 
-#define NORMAL_PRIORITY					0x0F																									/**< The highest priority for the slave*/
-#define LOW_PRIORITY						0x19																									/**< The start up priority*/
+#define SLAVE_TYPE											'B'																					/**< The type slave, capital letter means it has a temp sensor*/ 
+#define NORMAL_PRIORITY									0x0F														   					/**< The highest priority for the slave*/
+#define LOW_PRIORITY										0x19																				/**< The start up priority*/
 
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
-#define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
+#define APP_ADV_TIMEOUT_IN_SECONDS      0                                    	      /**< The advertising timeout (in units of seconds). */
 
 #define APP_TIMER_PRESCALER             3                                           /**< Value of the RTC1 PRESCALER register. */  // Changed from 3
 #define APP_TIMER_OP_QUEUE_SIZE         5                                           /**< Size of timer operation queues. */ // Changed from 4
@@ -86,9 +86,9 @@
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
-#define TEMP_UPDATE_INTERVAL						20000																				/**< Number of milliseconds the temperature should be calculated*/
+#define TEMP_UPDATE_INTERVAL						10000																				/**< Number of milliseconds the temperature should be calculated*/
 #define ACK_WAIT_INTERVAL								5000																				/**< Number of milliseconds waiting for ack*/
-
+#define RECONNECT_WAIT_INTERVAL					15000																					/**< Number of milliseconds waiting for a completed sending*/
 #define DEAD_BEEF                       0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
 #define UART_TX_BUF_SIZE                256                                         /**< UART TX buffer size. */
@@ -101,7 +101,7 @@
 #define TWI_INSTANCE_ID     0
 
 /* Common addresses definition for temperature sensor. */
-#define LM75B_ADDR          (0x92U >> 1)
+#define LM75B_ADDR          (0x49U) 
 #define LM75B_REG_TEMP      0x00U
 #define LM75B_REG_CONF      0x01U
 #define LM75B_REG_THYST     0x02U
@@ -117,22 +117,25 @@
 
 APP_TIMER_DEF(m_temp_timer);
 APP_TIMER_DEF(ack_timer);
+APP_TIMER_DEF(reconnect_timer);
 
 //static pm_peer_id_t m_peer_id;                             												  /**< Device reference handle to the current bonded central. */
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
-bool send_data(void);
+void send_data(void);
 bool send_ack(void);
 bool waiting_ack = false;
+static bool connected = false;
 
 /* Variables for I2C temp sensor */
 static volatile bool m_xfer_done = false;
 static const nrf_drv_twi_t m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
-static uint8_t m_sample;
+static uint8_t m_sample = 0;
 void update_state(void);
-
+void thermostate(void);
+void init_data(void);
 
 typedef struct 
 {
@@ -214,7 +217,7 @@ void print_slave_data(void)
  */
 void update_priority(void)
 {
-		if((slave_data.current_temp<slave_data.wanted_temp)&&(slave_data.wanted_temp - slave_data.current_temp)> 2 )
+		if((slave_data.current_temp<slave_data.wanted_temp)&&(slave_data.wanted_temp - slave_data.current_temp)>= 2 )
 		{
 			if(NORMAL_PRIORITY != slave_data.priority)
 			{
@@ -249,10 +252,16 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 					if('A' == p_data[0] || 'a' == p_data[0])
 					{
 						slave_data.address = p_data[1];
-						slave_data.state = p_data[3]; 
-						slave_data.wanted_temp = p_data[4];
-	
-	
+						app_timer_stop(reconnect_timer);
+						if((slave_data.wanted_temp != p_data[4]) || ((p_data[3] != slave_data.state) && (0xFF != p_data[3]) ))
+						{
+							slave_data.wanted_temp = p_data[4];
+							slave_data.state = p_data[3]; 
+							update_state();
+							update_priority();
+							thermostate();
+						}
+						
 						//Check if ack or data packet
 						if(0 == p_data[2])
 						{
@@ -264,24 +273,8 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 							app_timer_stop(ack_timer);
 							waiting_ack = false;
 						}
-						
-						//Check for updated state
-						if(p_data[3] != slave_data.state&& 0xFF != p_data[3] )
-						{
-							slave_data.state = p_data[3]; 
-							update_state();
-						}
-						if(p_data[4]!= slave_data.wanted_temp)
-						{
-							update_priority();
-						}
-						
-						NRF_LOG_INFO("	Type Recieved:			%c\n\r",p_data[0]);
-						NRF_LOG_INFO("	Address recieved:		%d\n\r",p_data[1]);
-						NRF_LOG_INFO("	ack recieved:			%d\n\r",p_data[2]);
-						NRF_LOG_INFO("	state recieved:			%d\n\r",p_data[3]);
-						NRF_LOG_INFO("	Wanted temp recieved:		%i\n\n\r",slave_data.wanted_temp);
-						//NRF_LOG_INFO("	priority recieved:		%d\n\n\r",p_data[6]);		
+				
+
 					}else
 					{
 						NRF_LOG_INFO("	Recieved data from unknown source %c \n\n\r",p_data[0]);
@@ -322,11 +315,12 @@ static void services_init(void)
 static void on_conn_params_evt(ble_conn_params_evt_t * p_evt)
 {
     uint32_t err_code;
-
+		
     if (p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED)
     {
         err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
-        APP_ERROR_CHECK(err_code);
+				NRF_LOG_INFO("\tsd_ble_gap_disconnect in on_conn_params_evt err_code:  %d \r\n",err_code);
+				UNUSED_VARIABLE(err_code);
     }
 }
 
@@ -398,7 +392,7 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
     switch (ble_adv_evt)
     {
 				
-		case BLE_ADV_EVT_DIRECTED:
+				case BLE_ADV_EVT_DIRECTED:
             NRF_LOG_INFO("BLE_ADV_EVT_DIRECTED\r\n");
             err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING_DIRECTED);
             APP_ERROR_CHECK(err_code);
@@ -439,6 +433,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         case BLE_GAP_EVT_CONNECTED:
 		
 						NRF_LOG_INFO("	BLE_GAP_EVT_CONNECTED \n\r ");
+						connected = true;
             err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
             APP_ERROR_CHECK(err_code);
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
@@ -451,50 +446,62 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 					}break; // BLE_GAP_EVT_ADV_REPORT
 									
         case BLE_GAP_EVT_DISCONNECTED:
+						
+						NRF_LOG_INFO("	BLE_GAP_EVT_DISCONNECTED \n\r ");
             err_code = bsp_indication_set(BSP_INDICATE_IDLE);
             APP_ERROR_CHECK(err_code);
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
 				
-						err_code = ble_advertising_start(BLE_ADV_MODE_SLOW);
-						APP_ERROR_CHECK(err_code);
+						err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
+						if(0 != err_code)
+						{
+								NRF_LOG_INFO("ble_advertising_start in BLE_GAP_EVT_DISCONNECTED err_code; 0x%x \n\r ",err_code);
+						}
+						init_data();
 						
+						connected=false;
+				
             break; // BLE_GAP_EVT_DISCONNECTED
 
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
+						NRF_LOG_INFO("	BLE_GAP_EVT_SEC_PARAMS_REQUEST \n\r ");
             // Pairing not supported
             err_code = sd_ble_gap_sec_params_reply(m_conn_handle, BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, NULL, NULL);
             APP_ERROR_CHECK(err_code);
             break; // BLE_GAP_EVT_SEC_PARAMS_REQUEST
 
         case BLE_GATTS_EVT_SYS_ATTR_MISSING:
+						NRF_LOG_INFO("	BLE_GATTS_EVT_SYS_ATTR_MISSING \n\r ");
             // No system attributes have been stored.
             err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
             APP_ERROR_CHECK(err_code);
             break; // BLE_GATTS_EVT_SYS_ATTR_MISSING
 
-        case BLE_GATTC_EVT_TIMEOUT:
-					NRF_LOG_INFO("HEIIIIIII  1\r\n");
+        case BLE_GATTC_EVT_TIMEOUT:				
             // Disconnect on GATT Client timeout event.
             err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gattc_evt.conn_handle,
                                              BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+						NRF_LOG_INFO("	BLE_GATTC_EVT_TIMEOUT \n\r ");
             APP_ERROR_CHECK(err_code);
             break; // BLE_GATTC_EVT_TIMEOUT
 
         case BLE_GATTS_EVT_TIMEOUT:
-					NRF_LOG_INFO("HEIIIIIII  2 \r\n");
             // Disconnect on GATT Server timeout event.
+						NRF_LOG_INFO("	BLE_GATTS_EVT_TIMEOUT \n\r ");
             err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gatts_evt.conn_handle,
                                              BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
             APP_ERROR_CHECK(err_code);
             break; // BLE_GATTS_EVT_TIMEOUT
 
         case BLE_EVT_USER_MEM_REQUEST:
+						NRF_LOG_INFO("	BLE_EVT_USER_MEM_REQUEST \n\r ");
             err_code = sd_ble_user_mem_reply(p_ble_evt->evt.gattc_evt.conn_handle, NULL);
             APP_ERROR_CHECK(err_code);
             break; // BLE_EVT_USER_MEM_REQUEST
 
         case BLE_GATTS_EVT_RW_AUTHORIZE_REQUEST:
         {
+						NRF_LOG_INFO("	BLE_GATTS_EVT_RW_AUTHORIZE_REQUEST \n\r ");
             ble_gatts_evt_rw_authorize_request_t  req;
             ble_gatts_rw_authorize_reply_params_t auth_reply;
 
@@ -524,6 +531,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
 #if (NRF_SD_BLE_API_VERSION == 3)
         case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST:
+						NRF_LOG_INFO("	BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST \n\r ");
             err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle,
                                                        NRF_BLE_MAX_MTU_SIZE);
             APP_ERROR_CHECK(err_code);
@@ -552,7 +560,6 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     on_ble_evt(p_ble_evt);
     ble_advertising_on_ble_evt(p_ble_evt);
     bsp_btn_ble_on_ble_evt(p_ble_evt);
-		
 }
 
 
@@ -656,7 +663,7 @@ static void advertising_init(void)
     memset(&advdata, 0, sizeof(advdata));
     advdata.name_type          = BLE_ADVDATA_FULL_NAME;
     advdata.include_appearance = false;
-    advdata.flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+    advdata.flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
 
     memset(&scanrsp, 0, sizeof(scanrsp));
     scanrsp.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
@@ -741,7 +748,7 @@ static void power_manage(void)
 
 /**@brief Function for setting initial data values
  */
-void init_data(void)
+void init_data()
 {
 	
 		slave_data.type 	  = SLAVE_TYPE;
@@ -749,48 +756,60 @@ void init_data(void)
 		slave_data.ack  = 0;
 		slave_data.state = 100;
 		slave_data.wanted_temp = 0xFF;
-		slave_data.current_temp = 0xFF;
+		slave_data.current_temp = 0;
 		slave_data.priority = LOW_PRIORITY;
 }
 
 
 /**@brief Function to send data over Nordic Uart serial
- * @param[out] bool true or false, sending successful not not
+ * @param[out] bool true or false, sending successful or not
  */
-bool send_data(void)
+void send_data(void)
 {
-	
-	uint8_t data[7];
-	uint32_t err_code;
-	
-	data[0] = slave_data.type;
-	data[1] = slave_data.address;
-	data[2] = 0;
-	data[3] = slave_data.state;
-	//data[4] = slave_data.wanted_temp;
-	data[5] = slave_data.current_temp;
-	data[6] = slave_data.priority;
-	
-if(false == waiting_ack)
-{
-		err_code = ble_nus_string_send(&m_nus,data,ELEMENTS_IN_MY_DATA_STRUCT);
-		waiting_ack = true;
-}	
-
-	if(err_code == NRF_SUCCESS )
+	if(true == connected )
 	{
-			NRF_LOG_INFO("	sending complete \n\r");
-			err_code = app_timer_start(ack_timer, 
-															 APP_TIMER_TICKS(ACK_WAIT_INTERVAL, 
-															 APP_TIMER_PRESCALER),
-																			NULL);
-			return true;
-	}
-	else
+		uint8_t data[7];
+		uint32_t err_code;
+		uint32_t err_code_timer;
+		
+		data[0] = slave_data.type;
+		data[1] = slave_data.address;
+		data[2] = 0;
+		data[3] = slave_data.state;
+		//data[4] = slave_data.wanted_temp;
+		data[5] = slave_data.current_temp;
+		data[6] = slave_data.priority;
+		
+		if(false == waiting_ack)
 		{
-			NRF_LOG_INFO("	sending not complete, error: %i \n\r",err_code);
-			return false;
+				err_code = ble_nus_string_send(&m_nus,data,ELEMENTS_IN_MY_DATA_STRUCT);
+				waiting_ack = true;
+			
+
+			if(err_code == NRF_SUCCESS )
+			{
+					NRF_LOG_INFO("	sending complete \n\r");
+					err_code_timer = app_timer_start(ack_timer, 
+																	 APP_TIMER_TICKS(ACK_WAIT_INTERVAL, 
+																	 APP_TIMER_PRESCALER),
+																					NULL);
+				app_timer_stop(reconnect_timer);
+				if(err_code_timer != NRF_SUCCESS)
+					NRF_LOG_INFO("\tapp_timer_error ack_timer; 0x%x  \n\r",err_code_timer);
+				
+					
+			}
+			else
+				{
+					NRF_LOG_INFO("	sending not complete, error: 0x%x  %d \n\r",err_code,err_code);
+					err_code = app_timer_start(reconnect_timer, 
+																	 APP_TIMER_TICKS(RECONNECT_WAIT_INTERVAL, 
+																	 APP_TIMER_PRESCALER),
+																					NULL);
+				}
 		}
+		else NRF_LOG_INFO("	sending not complete, waiting on ack  \n\r");
+	}
 }
 
 /**@brief Function to send ack over Nordic Uart serial
@@ -815,12 +834,13 @@ bool send_ack(void)
 	if(err_code == NRF_SUCCESS )
 	{
 			NRF_LOG_INFO("	ack sent \n\n\r");
+			app_timer_stop(reconnect_timer);
 		
 			return true;
 	}
 	else
 		{
-			NRF_LOG_INFO("	ack failed to send \n\n\r",err_code);
+			NRF_LOG_INFO("	ack failed to send: 0x%02x \n\n\r",err_code);
 			return false;
 		}
 }
@@ -858,7 +878,7 @@ void LM75B_set_mode(void)
 __STATIC_INLINE void data_handler(uint8_t temp)
 {
 		//NRF_LOG_INFO("KJØRER DENNE_2????");
-		
+
 		
 }
 
@@ -914,7 +934,6 @@ static void read_sensor_data()
     /* Read 1 byte from the specified address - skip 3 bits dedicated for fractional part of temperature. */
     ret_code_t err_code = nrf_drv_twi_rx(&m_twi, LM75B_ADDR, &m_sample, sizeof(m_sample));
     APP_ERROR_CHECK(err_code);
-	
 }
 
 
@@ -922,24 +941,34 @@ static void read_sensor_data()
  */
 static void timer_handler(void * p_context)
 {	
+		static volatile bool updated_temp = false;
 	
-		if(0xFF == slave_data.address)
+		if(0xFF == slave_data.address && true == connected )
 		{
 			NRF_LOG_INFO("	What is my address ? \r\n");
 			send_data();
 		}
 			
-		NRF_LOG_INFO("	read_sensor_data: %i \r\n",m_sample);
-		print_slave_data();
-		thermostate();
+		NRF_LOG_INFO("\tread_sensor_data: %i \r\n",m_sample);
 		
-		if(m_sample != slave_data.current_temp)
+		if(m_sample != slave_data.current_temp || false == updated_temp)
 		{
+
 			NRF_LOG_INFO("	New temp: %d \r\n",m_sample);
 			slave_data.current_temp = m_sample;
+			thermostate();
 			update_priority();
-			send_data();
-		}			
+			
+			if(slave_data.current_temp != 0  )
+			{
+				
+				NRF_LOG_INFO("	Set update_temp to true: %d \r\n",slave_data.current_temp);
+				updated_temp = true;
+			}	
+			send_data();	
+		}
+		
+		print_slave_data();
 }
 
 /**@brief  Timeout handler for the repeated timer
@@ -947,8 +976,20 @@ static void timer_handler(void * p_context)
 static void ack_timer_handler(void * p_context)
 {	
 		send_data();
+		NRF_LOG_INFO("	Did not receive any ack, resending data\r\n");
 }
 
+static void reconnect_timer_handler(void * p_context)
+{		
+	static volatile uint8_t cnt =0;
+	cnt++;
+	if(slave_data.address == 255 || cnt > 100)
+	{
+	
+				NRF_LOG_INFO("	Connection problem, resetting device \r\n");
+				APP_ERROR_CHECK(1);			
+	}
+}
 
 /**@brief Create timers.
  */
@@ -965,6 +1006,11 @@ static void create_timers()
 																APP_TIMER_MODE_SINGLE_SHOT,
 																ack_timer_handler);
 	
+		APP_ERROR_CHECK(err_code);
+	
+		err_code = app_timer_create(&reconnect_timer, 
+																APP_TIMER_MODE_SINGLE_SHOT,
+																reconnect_timer_handler);
 		APP_ERROR_CHECK(err_code);
 }
 
@@ -983,8 +1029,9 @@ int main(void)
 		create_timers();
 		err_code = app_timer_start(m_temp_timer, 
 															 APP_TIMER_TICKS(TEMP_UPDATE_INTERVAL, 
-															 APP_TIMER_PRESCALER),
-																			NULL);
+															 APP_TIMER_PRESCALER),NULL);
+
+																	
 		twi_init();		
 	  LM75B_set_mode();
     buttons_leds_init(&erase_bonds);
@@ -993,7 +1040,7 @@ int main(void)
 		err_code = NRF_LOG_INIT(NULL);
 		APP_ERROR_CHECK(err_code);
 	
-	if (erase_bonds == true)
+		if (erase_bonds == true)
     {
         NRF_LOG_DEBUG("Bonds erased!\r\n");
     }
@@ -1015,13 +1062,14 @@ int main(void)
 		
     NRF_LOG_INFO("	UART Start!!!\r\n");
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
-    APP_ERROR_CHECK(err_code);
+		if(err_code != 0)
+			NRF_LOG_INFO("\tble_advertising_start err_code: %d \r\n",err_code);
+		
+    UNUSED_VARIABLE(err_code);
 
-    APP_ERROR_CHECK(err_code);
     // Enter main loop.
     for (;;)
-    {
-							
+    {							
 				 do
         {
            power_manage();	
